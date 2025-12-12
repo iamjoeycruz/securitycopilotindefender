@@ -2,7 +2,7 @@
 
 > **Complete walkthrough for running security alert simulations on AKS clusters**
 
-This guide provides step-by-step instructions for using the `Deploy-KubernetesAlertSimulation.ps1` script to validate that Microsoft Defender for Containers is properly configured and detecting threats in your Azure Kubernetes Service (AKS) environment.
+This guide provides step-by-step instructions for using the [`Deploy-KubernetesAlertSimulation.ps1`](https://github.com/iamjoeycruz/securitycopilotindefender/blob/main/docs/Deploy-KubernetesAlertSimulation.ps1) script to validate that Microsoft Defender for Containers is properly configured and detecting threats in your Azure Kubernetes Service (AKS) environment.
 
 ---
 

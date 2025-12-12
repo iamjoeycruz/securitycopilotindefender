@@ -1,6 +1,6 @@
-# Security Copilot in Defender - Testing Scripts
+# Defender for Cloud Simulation Scripts
 
-Unofficial PowerShell scripts to help administrators test Security Copilot scenarios in Microsoft Defender.
+Unofficial PowerShell scripts to help administrators run security simulations and validate threat detection in Microsoft Defender for Cloud.
 
 ## 🛡️ Scripts
 

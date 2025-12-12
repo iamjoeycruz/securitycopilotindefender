@@ -208,7 +208,8 @@ If not logged in, a browser window will open for Azure authentication.
 
 ### Step 5: Permission Validation
 
-![Permission Check](../images/permission-check.png)
+<img width="975" height="581" alt="image" src="https://github.com/user-attachments/assets/b9aa93c3-067d-4c02-81b7-547048458fcd" />
+
 
 The script validates your Azure permissions:
 
@@ -230,7 +231,6 @@ The script validates your Azure permissions:
 
 ### Step 6: Cluster Selection
 
-![Cluster Selection](../images/cluster-selection.png)
 
 The script discovers available AKS clusters:
 
@@ -259,7 +259,8 @@ Enter your choice (1 or 2):
 
 ### Step 7: Cost Acknowledgment (New Cluster Only)
 
-![Cost Estimate](../images/cost-estimate.png)
+<img width="975" height="531" alt="image" src="https://github.com/user-attachments/assets/12888c70-da40-4e85-bd3a-00550c28c694" />
+
 
 If creating a new cluster, you'll see cost estimates:
 
@@ -282,7 +283,8 @@ Do you accept the costs and want to create the cluster? (yes/no):
 
 ### Step 8: Cluster Deployment Progress
 
-![Cluster Deployment](../images/cluster-deployment.png)
+<img width="975" height="850" alt="image" src="https://github.com/user-attachments/assets/a3a9e8d8-882e-420e-9cb8-9d25690c2069" />
+
 
 The script shows a real-time progress bar during cluster creation:
 
@@ -319,7 +321,8 @@ After cluster creation, Defender for Containers is automatically enabled:
 
 ### Step 10: Scenario Selection
 
-![Scenario Selection](../images/scenario-selection.png)
+<img width="975" height="793" alt="image" src="https://github.com/user-attachments/assets/bf16f406-06ba-4a4f-97da-014c55789e70" />
+
 
 Choose which attack scenarios to run:
 
@@ -350,7 +353,8 @@ Select a scenario:
 
 ### Step 11: Simulation Execution
 
-![Simulation Running](../images/simulation-running.png)
+<img width="975" height="776" alt="image" src="https://github.com/user-attachments/assets/64d2e916-2489-4193-9f6e-dd18208625eb" />
+
 
 The simulation runs and shows real-time output:
 
@@ -389,7 +393,8 @@ Scenario completed successfully.
 
 ### Step 12: HTML Report Generation
 
-![HTML Report](../images/html-report.png)
+<img width="975" height="504" alt="image" src="https://github.com/user-attachments/assets/017e5264-a048-4b1a-b301-abd2b4290ab3" />
+
 
 The script generates a comprehensive HTML report:
 

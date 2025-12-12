@@ -8,7 +8,7 @@ This repository contains the following PowerShell scripts:
 
 ### Kubernetes Alert Simulation Script
 
-**[Deploy-KubernetesAlertSimulation.ps1](Deploy-KubernetesAlertSimulation.ps1)** - Automates Microsoft Defender for Cloud's Kubernetes attack simulation to validate threat detection on AKS clusters.
+Deploy-KubernetesAlertSimulation.ps1 - Automates Microsoft Defender for Cloud's Kubernetes attack simulation to validate threat detection on AKS clusters.
 
 | | |
 |---|---|

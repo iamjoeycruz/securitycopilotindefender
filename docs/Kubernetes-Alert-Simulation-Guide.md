@@ -171,8 +171,8 @@ cd C:\Path\To\Script
 ```
 
 ### Step 2: Accept the Disclaimer
+<img width="975" height="1118" alt="image" src="https://github.com/user-attachments/assets/54250edf-c9d4-4aa1-8f22-86a00c604d34" />
 
-![Disclaimer Screen](../images/disclaimer-prompt.png)
 
 The script will display a disclaimer. Read it carefully and type `yes` to continue.
 

@@ -4444,4 +4444,33 @@ Remove-SessionState
 Write-Host "Session completed successfully. Session state cleared." -ForegroundColor Green
 Write-Host ""
 
+# ============================================
+# VERIFY RESOURCE CLEANUP IN AZURE PORTAL
+# ============================================
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  🔍 VERIFY RESOURCE CLEANUP" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Please double-check that all resources were deleted as expected." -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Azure Portal - Kubernetes Clusters:" -ForegroundColor Cyan
+Write-Host "https://portal.azure.com/#view/Microsoft_Azure_KubernetesFleet/KubernetesHub.MenuView/~/clusters" -ForegroundColor Green
+Write-Host ""
+Write-Host "Verify that:" -ForegroundColor White
+Write-Host "  • The simulation cluster no longer appears in the list" -ForegroundColor Gray
+Write-Host "  • The associated resource group has been deleted" -ForegroundColor Gray
+Write-Host "  • No orphaned resources remain that could incur charges" -ForegroundColor Gray
+Write-Host ""
+
+$openPortal = Read-Host "Open Azure Portal to verify cleanup? (y/n)"
+if ($openPortal -eq 'y' -or $openPortal -eq 'Y' -or $openPortal -eq 'yes') {
+    Write-Host ""
+    Write-Host "Opening Azure Portal..." -ForegroundColor Cyan
+    Start-Process "https://portal.azure.com/#view/Microsoft_Azure_KubernetesFleet/KubernetesHub.MenuView/~/clusters"
+}
+
+Write-Host ""
+Write-Host "Thank you for using the Microsoft Defender for Cloud Kubernetes Alerts Simulation Tool!" -ForegroundColor Green
+Write-Host ""
+
 #endregion

@@ -1,0 +1,170 @@
+HUMAN-OPERATED RANSOMWARE ATTACK - ANALYST RESPONSE GUIDEBOOK
+
+********************************************************************************
+*                              ⚠️  DISCLAIMER  ⚠️                               *
+*                                                                              *
+*  THIS DOCUMENT IS FOR DEMONSTRATION PURPOSES ONLY                            *
+*                                                                              *
+*  All company names, email addresses, URLs, and procedures contained herein  *
+*  are fictional and intended solely for training and demo scenarios.          *
+*  Do not use this guidebook for actual incident response.                     *
+*                                                                              *
+********************************************************************************
+
+PURPOSE
+This guidebook covers the 2 critical steps SOC analysts must complete when a human-operated ransomware (HumOR) attack is detected or suspected. Time is critical - execute these steps immediately upon confirmation.
+
+================================================================================
+TASK 1: NOTIFY MAIN SECOPS TEAM
+================================================================================
+
+Immediate notification is required for all confirmed or suspected human-operated ransomware incidents. Do NOT wait for full investigation before notifying.
+
+Steps:
+1. Send notification email to: notify@zava-int.com
+2. Use subject line: [CRITICAL] Human-Operated Ransomware - [Incident ID]
+3. Include the following information in the email body:
+
+   REQUIRED NOTIFICATION CONTENT:
+   -----------------------------
+   - Incident ID from Microsoft Defender
+   - Detection timestamp (UTC)
+   - Number of affected devices (known so far)
+   - Affected business unit/department (if known)
+   - Current incident status (Active/Investigating)
+   - Initial attack vector (if identified)
+   - Ransomware family/variant (if identified)
+   - Your name and contact information
+
+4. Mark email as HIGH PRIORITY
+5. If no response within 15 minutes, escalate via phone to on-call manager
+
+Email Template:
+---------------
+Subject: [CRITICAL] Human-Operated Ransomware - INC-XXXXXX
+
+SecOps Team,
+
+Human-operated ransomware activity has been detected in our environment.
+
+Incident ID: [From Defender Portal]
+Detection Time: [UTC Timestamp]
+Affected Devices: [Count]
+Business Unit: [Department/Location]
+Status: Active - Investigation In Progress
+Initial Vector: [Email/RDP/VPN/Unknown]
+Ransomware Family: [If identified, otherwise "Under Analysis"]
+
+Immediate containment actions are being executed per playbook.
+
+Analyst: [Your Name]
+Contact: [Your Phone/Teams]
+
+---------------
+
+Key Requirements:
+- Notify within 5 minutes of ransomware confirmation
+- Do not wait for complete device enumeration
+- Update the team every 30 minutes during active incident
+
+================================================================================
+TASK 2: SUBMIT ZAVA ASSET NUMBERS AND DEVICE INFO TO INTERNAL SYSTEMS
+================================================================================
+
+All affected and potentially affected devices must be logged in internal asset tracking systems for business continuity and insurance purposes.
+
+Steps:
+1. Gather device information from Microsoft Defender:
+   - Navigate to Incidents > Select the ransomware incident
+   - Go to "Assets" tab > "Devices"
+   - Export the device list or manually collect details
+
+2. For EACH affected device, collect:
+
+   REQUIRED DEVICE INFORMATION:
+   ----------------------------
+   - Zava Asset Number (from device name or asset tag)
+   - Device Name (hostname)
+   - Device ID (from Defender)
+   - IP Address (last known)
+   - Operating System and version
+   - Last logged-in user
+   - Device risk level
+   - Containment status (Isolated/Not Isolated)
+   - Encryption status (Encrypted/Partial/Not Encrypted)
+
+3. Submit to internal asset tracking system:
+   - Access: https://assets.zava-int.com/incident-reporting
+   - Select "Ransomware Incident" as the incident type
+   - Enter the Defender Incident ID as reference
+   - Upload device list or enter manually
+   - Attach any relevant screenshots from Defender
+
+4. For devices with confirmed encryption:
+   - Mark asset status as "Compromised - Ransomware"
+   - Initiate hardware replacement request if required
+   - Document backup restoration eligibility
+
+5. Update CMDB records:
+   - Set device status to "Incident - Quarantined"
+   - Add incident reference number to device notes
+   - Flag for security review before return to production
+
+Asset Submission Template:
+--------------------------
+| Zava Asset # | Device Name    | IP Address    | OS           | Status      | Encrypted |
+|--------------|----------------|---------------|--------------|-------------|-----------|
+| ZV-XXXXX     | WKS-XXXXXXXX   | 10.X.X.X      | Win 11 23H2  | Isolated    | Yes/No    |
+| ZV-XXXXX     | SRV-XXXXXXXX   | 10.X.X.X      | Server 2022  | Isolated    | Partial   |
+--------------------------
+
+Key Requirements:
+- Submit initial asset report within 1 hour of incident declaration
+- Update asset list as new affected devices are discovered
+- Final asset report due within 24 hours of incident closure
+
+================================================================================
+ESCALATION CRITERIA
+================================================================================
+
+Immediately escalate to Crisis Management Team if:
+- More than 10 devices show encryption activity
+- Domain Controller or critical infrastructure affected
+- Backup systems are targeted or compromised
+- Ransom note discovered with active countdown
+- Evidence of data exfiltration before encryption
+- Attack is actively spreading despite containment
+
+Crisis Management Hotline: [Insert Emergency Number]
+Executive On-Call: [Insert Contact]
+
+================================================================================
+REFERENCE: COMMON HUMAN-OPERATED RANSOMWARE INDICATORS
+================================================================================
+
+Detection Triggers:
+- Suspicious PowerShell/WMI activity across multiple hosts
+- Credential dumping tools (Mimikatz, LSASS access)
+- Lateral movement patterns (PsExec, WMI, RDP)
+- Volume shadow copy deletion
+- Backup service tampering
+- Mass file encryption activity
+
+Common Attack Progression:
+1. Initial Access (Phishing, Exploited VPN/RDP)
+2. Persistence & Privilege Escalation
+3. Credential Harvesting
+4. Lateral Movement & Reconnaissance
+5. Data Exfiltration (often before encryption)
+6. Encryption Deployment
+
+================================================================================
+DOCUMENT INFORMATION
+================================================================================
+
+Version: 1.0 - Human-Operated Ransomware Response
+Last Updated: February 2026
+Owner: Security Operations Center
+Classification: Internal Use Only
+Review Cycle: Quarterly
+Next Review: May 2026

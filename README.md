@@ -1,6 +1,16 @@
 # Security Copilot in Defender — Tools & Remediation
 
-> **⚠️ IMPORTANT:** All scripts and templates in this repository are provided **"AS IS"** for **educational and experimental purposes only**. They are **not officially supported by Microsoft**. See [Disclaimer](#-disclaimer) below.
+> **🚨 NOT OFFICIAL MICROSOFT DOCUMENTATION**
+>
+> This repository is an **unofficial, community-driven** collection of scripts and templates created for **educational and experimental purposes only**. It is **not** affiliated with, endorsed by, or representative of Microsoft in any official capacity.
+>
+> **For official Microsoft documentation, visit: [https://learn.microsoft.com](https://learn.microsoft.com)**
+>
+> - [Microsoft Sentinel Documentation](https://learn.microsoft.com/en-us/azure/sentinel/)
+> - [Microsoft Defender XDR Documentation](https://learn.microsoft.com/en-us/defender-xdr/)
+> - [Security Copilot Documentation](https://learn.microsoft.com/en-us/security-copilot/)
+>
+> Nothing in this repository should be interpreted as official guidance, best practices, or supported solutions from Microsoft. See the [full Disclaimer](#-disclaimer) below.
 
 Unofficial PowerShell scripts, ARM templates, and playbooks to help security administrators simulate threats, diagnose issues, and remediate known problems in Microsoft Defender and Microsoft Sentinel environments.
 
@@ -225,10 +235,24 @@ Want to see what the reports look like before running anything? Check the [`samp
 
 ## ⚠️ Disclaimer
 
+> **This repository is NOT official Microsoft documentation, guidance, or tooling.**
+>
+> For official product documentation, always refer to **[https://learn.microsoft.com](https://learn.microsoft.com)**.
+
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                              DISCLAIMER                                    ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
+
+THIS REPOSITORY AND ALL OF ITS CONTENTS — INCLUDING SCRIPTS, TEMPLATES,
+PLAYBOOKS, DOCUMENTATION, AND SAMPLE REPORTS — ARE PROVIDED FOR EDUCATIONAL
+AND EXPERIMENTAL PURPOSES ONLY.
+
+THIS IS NOT OFFICIAL MICROSOFT DOCUMENTATION. THIS IS NOT AN OFFICIAL
+MICROSOFT PRODUCT, SERVICE, OR TOOL. NOTHING IN THIS REPOSITORY REPRESENTS
+OFFICIAL MICROSOFT GUIDANCE, BEST PRACTICES, OR SUPPORTED SOLUTIONS.
+
+FOR OFFICIAL DOCUMENTATION, VISIT: https://learn.microsoft.com
 
 THE SAMPLE SCRIPTS, TEMPLATES, AND PLAYBOOKS IN THIS REPOSITORY ARE NOT
 SUPPORTED UNDER ANY MICROSOFT STANDARD SUPPORT PROGRAM OR SERVICE. THEY ARE
@@ -248,14 +272,15 @@ MICROSOFT HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
 ### Before Using Anything in This Repository
 
-1. **REVIEW** — Read the script/template code and documentation to understand what it does
-2. **TEST** — Always run in a **non-production environment** first
-3. **AUTHORIZE** — Ensure you have proper authorization and permissions
-4. **COMPLY** — Verify compliance with your organization's security policies
-5. **UNDERSTAND COSTS** — Some deployments create billable Azure resources (see individual READMEs)
-6. **ISOLATE** — Do NOT run simulation scripts on production systems with active workloads
+1. **UNDERSTAND** — This is **not** official Microsoft documentation or tooling. For official guidance, visit [learn.microsoft.com](https://learn.microsoft.com)
+2. **REVIEW** — Read the script/template code and documentation to understand what it does
+3. **TEST** — Always run in a **non-production environment** first
+4. **AUTHORIZE** — Ensure you have proper authorization and permissions
+5. **COMPLY** — Verify compliance with your organization's security policies
+6. **UNDERSTAND COSTS** — Some deployments create billable Azure resources (see individual READMEs)
+7. **ISOLATE** — Do NOT run simulation scripts on production systems with active workloads
 
-These are **unofficial community tools** provided for **educational and experimental purposes only**. They are **not** Microsoft products.
+These are **unofficial community tools** provided for **educational and experimental purposes only**. They are **not** Microsoft products, services, or official guidance in any way, shape, or form.
 
 ---
 

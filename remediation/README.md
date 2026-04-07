@@ -21,7 +21,27 @@ Any organization that:
 
 ---
 
-## Remediation Options
+## Step 1: Diagnose the Problem
+
+Before deploying any fix, confirm tag removal is actually happening in your environment:
+
+```powershell
+# Zero-config — walks you through everything interactively
+.\scripts\Investigate-PhishingTriageAgentTagRemoval.ps1
+```
+
+📖 **[Full instructions and prerequisites](../scripts/README.md#investigate-phishingtriageagenttagremovalps1)** | 📄 **[View the script](../scripts/Investigate-PhishingTriageAgentTagRemoval.ps1)**
+
+The diagnostic script:
+- ✅ Scans your Sentinel incidents for missing tags (read-only)
+- ✅ Runs KQL queries to identify which actors are stripping tags
+- ✅ Generates an HTML report with findings, evidence, and remediation steps
+- ✅ **Does NOT modify any resources**
+- 📊 **[See a sample report](../samples/sample-diagnostic-report.html)**
+
+---
+
+## Step 2: Remediation Options
 
 ### ⭐ Option 1: Automation Rule (Recommended)
 
@@ -206,26 +226,6 @@ See the **[Full Deployment Guide](restore-sentinel-incident-tags/README.md)** fo
 | I want defense in depth (both!) | **Both** |
 
 > **Tip:** You can deploy **both** options together. The automation rule handles the known tags immediately (free, no latency), and the Logic App catches anything else as a safety net.
-
----
-
-## Diagnosing the Problem First
-
-Not sure if tag removal is actually happening in your environment? Run the diagnostic script **before** deploying any fix:
-
-```powershell
-# Zero-config — walks you through everything interactively
-.\scripts\Investigate-PhishingTriageAgentTagRemoval.ps1
-```
-
-📖 **[Full instructions and prerequisites](../scripts/README.md#investigate-phishingtriageagenttagremovalps1)** | 📄 **[View the script](../scripts/Investigate-PhishingTriageAgentTagRemoval.ps1)**
-
-The diagnostic script:
-- ✅ Scans your Sentinel incidents for missing tags (read-only)
-- ✅ Runs KQL queries to identify which actors are stripping tags
-- ✅ Generates an HTML report with findings, evidence, and remediation steps
-- ✅ **Does NOT modify any resources**
-- 📊 **[See a sample report](../samples/sample-diagnostic-report.html)**
 
 ---
 

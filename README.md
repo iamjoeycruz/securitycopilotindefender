@@ -1,6 +1,6 @@
-# Defender for Cloud Simulation Scripts
+# Security Copilot in Defender — Tools & Remediation
 
-Unofficial PowerShell scripts to help administrators run security simulations and validate threat detection in Microsoft Defender for Cloud.
+Unofficial PowerShell scripts and ARM templates to help administrators run security simulations, validate threat detection, and remediate known issues in Microsoft Defender for Cloud and Microsoft Sentinel.
 
 ## 🛡️ Scripts
 
@@ -52,6 +52,22 @@ Deploy-KubernetesAlertSimulation.ps1 - Automates Microsoft Defender for Cloud's 
 | Web Shell | Remote command execution | Possible Web Shell activity detected |
 
 > ⚠️ **Important**: Run only on non-production clusters. See the [complete guide](docs/Kubernetes-Alert-Simulation-Guide.md) for detailed instructions and safety considerations.
+
+---
+
+## 🔧 Remediation Playbooks
+
+### Restore Sentinel Incident Tags
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fiamjoeycruz%2Fsecuritycopilotindefender%2Fmain%2Fremediation%2Frestore-sentinel-incident-tags%2Fazuredeploy.json)
+
+| | |
+|---|---|
+| **Problem** | The Phishing Triage Agent and Defender XDR alert correlation remove tags/labels from Sentinel incidents, breaking tag-based automation |
+| **Root Cause** | Sentinel's PUT API uses full-replace semantics — omitting the `labels` field deletes all tags |
+| **Solution** | Logic App playbook that auto-restores required tags within seconds of removal |
+| **Documentation** | 📖 **[Deployment Guide](remediation/restore-sentinel-incident-tags/README.md)** |
+| **Cost** | < $1/month (Logic App Consumption tier) |
 
 ---
 

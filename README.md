@@ -1,47 +1,55 @@
 # Security Copilot in Defender — Tools & Remediation
 
-Unofficial PowerShell scripts and ARM templates to help administrators run security simulations, validate threat detection, and remediate known issues in Microsoft Defender for Cloud and Microsoft Sentinel.
+> **⚠️ IMPORTANT:** All scripts and templates in this repository are provided **"AS IS"** for **educational and experimental purposes only**. They are **not officially supported by Microsoft**. See [Disclaimer](#-disclaimer) below.
+
+Unofficial PowerShell scripts, ARM templates, and playbooks to help security administrators simulate threats, diagnose issues, and remediate known problems in Microsoft Defender and Microsoft Sentinel environments.
+
+---
+
+## 📂 Repository Structure
+
+```
+├── scripts/                         # PowerShell diagnostic & simulation scripts
+│   ├── Deploy-KubernetesAlertSimulation.ps1
+│   ├── Get-DefenderIncidentReport.ps1
+│   └── Investigate-PhishingTriageAgentTagRemoval.ps1
+│
+├── remediation/                     # Deployable fixes (ARM templates + Logic Apps)
+│   └── restore-sentinel-incident-tags/
+│       ├── azuredeploy.json         # One-click Deploy to Azure
+│       └── README.md                # Deployment guide
+│
+├── demos/                           # Demo content & guidebooks
+│   └── human-operated-ransomware-guidebook.txt
+│
+├── docs/                            # Documentation & walkthrough guides
+│   └── Kubernetes-Alert-Simulation-Guide.md
+│
+├── LICENSE                          # MIT License
+└── README.md                        # This file
+```
+
+---
 
 ## 🛡️ Scripts
 
-This repository contains the following PowerShell scripts:
+### Kubernetes Alert Simulation
 
-### Kubernetes Alert Simulation Script
-
-Deploy-KubernetesAlertSimulation.ps1 - Automates Microsoft Defender for Cloud's Kubernetes attack simulation to validate threat detection on AKS clusters.
+Automates Microsoft Defender for Cloud's Kubernetes attack simulation to validate threat detection on AKS clusters.
 
 | | |
 |---|---|
-| **Purpose** | Validate that Microsoft Defender for Containers is properly configured and detecting threats |
-| **Documentation** | 📖 **[Complete Walkthrough Guide](docs/Kubernetes-Alert-Simulation-Guide.md)** |
-| **Version** | 2.2.0 (December 2025) |
+| **Script** | [`scripts/Deploy-KubernetesAlertSimulation.ps1`](scripts/Deploy-KubernetesAlertSimulation.ps1) |
+| **Documentation** | 📖 [Complete Walkthrough Guide](docs/Kubernetes-Alert-Simulation-Guide.md) |
+| **Version** | 2.2.0 |
 | **Requirements** | PowerShell 7.0+, Azure CLI, kubectl, Helm, Python 3.7+ |
 
-#### Quick Start
-
 ```powershell
-# Run interactively (recommended for first-time users)
-.\Deploy-KubernetesAlertSimulation.ps1
-
-# Run on a specific cluster
-.\Deploy-KubernetesAlertSimulation.ps1 -ClusterName "my-cluster" -ResourceGroup "my-rg"
-
-# Run all scenarios with automatic cleanup
-.\Deploy-KubernetesAlertSimulation.ps1 -SimulationScenario All -CleanupAfterRun
+.\scripts\Deploy-KubernetesAlertSimulation.ps1
 ```
 
-#### Key Features
-
-- ✅ **Automatic prerequisite installation** via winget
-- ✅ **Azure permission validation** with least-privilege recommendations
-- ✅ **Option to create a new non-prod AKS cluster** for testing
-- ✅ **Visual progress bar** for cluster deployment
-- ✅ **Production cluster detection** with safety warnings
-- ✅ **Comprehensive cost analysis** and estimates
-- ✅ **Detailed HTML report generation** with expected alerts
-- ✅ **Complete cleanup** of simulation resources
-
-#### Attack Scenarios
+<details>
+<summary>Attack Scenarios</summary>
 
 | Scenario | Description | Key Alerts Generated |
 |----------|-------------|---------------------|
@@ -51,7 +59,48 @@ Deploy-KubernetesAlertSimulation.ps1 - Automates Microsoft Defender for Cloud's 
 | Crypto Mining | Mining software simulation | Digital currency mining behavior detected |
 | Web Shell | Remote command execution | Possible Web Shell activity detected |
 
-> ⚠️ **Important**: Run only on non-production clusters. See the [complete guide](docs/Kubernetes-Alert-Simulation-Guide.md) for detailed instructions and safety considerations.
+</details>
+
+> ⚠️ Run **only** on non-production clusters.
+
+---
+
+### Defender Incident Report
+
+Retrieves incident data from Microsoft Defender for Endpoint via Microsoft Graph and generates comprehensive HTML reports with alerts, evidence, and timelines.
+
+| | |
+|---|---|
+| **Script** | [`scripts/Get-DefenderIncidentReport.ps1`](scripts/Get-DefenderIncidentReport.ps1) |
+| **Version** | 2.0.0 |
+| **Requirements** | Microsoft.Graph.Security, Microsoft.Graph.Authentication modules |
+| **Permissions** | SecurityIncident.Read.All, SecurityAlert.Read.All |
+
+```powershell
+.\scripts\Get-DefenderIncidentReport.ps1 -IncidentId 256968
+```
+
+---
+
+### Phishing Triage Agent — Tag Removal Diagnostic
+
+Investigates whether the Security Copilot Phishing Triage Agent (or other services) are stripping tags from Sentinel incidents. Generates an HTML report with findings, KQL evidence, and remediation steps.
+
+| | |
+|---|---|
+| **Script** | [`scripts/Investigate-PhishingTriageAgentTagRemoval.ps1`](scripts/Investigate-PhishingTriageAgentTagRemoval.ps1) |
+| **Type** | Read-only diagnostic (does NOT modify any resources) |
+| **Requirements** | Az.Accounts, Az.SecurityInsights, Az.Monitor, Az.OperationalInsights |
+
+```powershell
+# Interactive mode — walks you through everything
+.\scripts\Investigate-PhishingTriageAgentTagRemoval.ps1
+
+# Or pass parameters directly
+.\scripts\Investigate-PhishingTriageAgentTagRemoval.ps1 `
+    -SubscriptionId "xxxx" -ResourceGroupName "rg" `
+    -WorkspaceName "ws" -ExpectedTags "AutoRemediate","PhishingReview"
+```
 
 ---
 
@@ -64,9 +113,9 @@ Deploy-KubernetesAlertSimulation.ps1 - Automates Microsoft Defender for Cloud's 
 | | |
 |---|---|
 | **Problem** | The Phishing Triage Agent and Defender XDR alert correlation remove tags/labels from Sentinel incidents, breaking tag-based automation |
-| **Root Cause** | Sentinel's PUT API uses full-replace semantics — omitting the `labels` field deletes all tags |
+| **Root Cause** | Sentinel's PUT API uses full-replace semantics — omitting the `labels` field deletes all existing tags |
 | **Solution** | Logic App playbook that auto-restores required tags within seconds of removal |
-| **Documentation** | 📖 **[Deployment Guide](remediation/restore-sentinel-incident-tags/README.md)** |
+| **Documentation** | 📖 **[Full Deployment Guide](remediation/restore-sentinel-incident-tags/README.md)** |
 | **Cost** | < $1/month (Logic App Consumption tier) |
 
 ---
@@ -75,45 +124,48 @@ Deploy-KubernetesAlertSimulation.ps1 - Automates Microsoft Defender for Cloud's 
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                              DISCLAIMER                                       ║
+║                              DISCLAIMER                                    ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-THE SAMPLE SCRIPTS ARE NOT SUPPORTED UNDER ANY MICROSOFT STANDARD SUPPORT
-PROGRAM OR SERVICE. THE SAMPLE SCRIPTS ARE PROVIDED "AS IS" WITHOUT WARRANTY
-OF ANY KIND. MICROSOFT FURTHER DISCLAIMS ALL IMPLIED WARRANTIES INCLUDING,
-WITHOUT LIMITATION, ANY IMPLIED WARRANTIES OF MERCHANTABILITY OR OF FITNESS
-FOR A PARTICULAR PURPOSE.
+THE SAMPLE SCRIPTS, TEMPLATES, AND PLAYBOOKS IN THIS REPOSITORY ARE NOT
+SUPPORTED UNDER ANY MICROSOFT STANDARD SUPPORT PROGRAM OR SERVICE. THEY ARE
+PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. MICROSOFT
+FURTHER DISCLAIMS ALL IMPLIED WARRANTIES INCLUDING, WITHOUT LIMITATION, ANY
+IMPLIED WARRANTIES OF MERCHANTABILITY OR OF FITNESS FOR A PARTICULAR PURPOSE.
 
-THE ENTIRE RISK ARISING OUT OF THE USE OR PERFORMANCE OF THE SAMPLE SCRIPTS
-AND DOCUMENTATION REMAINS WITH YOU. IN NO EVENT SHALL MICROSOFT, ITS AUTHORS,
-OR ANYONE ELSE INVOLVED IN THE CREATION, PRODUCTION, OR DELIVERY OF THE
-SCRIPTS BE LIABLE FOR ANY DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION,
-DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
-INFORMATION, OR OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY
-TO USE THE SAMPLE SCRIPTS OR DOCUMENTATION, EVEN IF MICROSOFT HAS BEEN ADVISED
-OF THE POSSIBILITY OF SUCH DAMAGES.
+THE ENTIRE RISK ARISING OUT OF THE USE OR PERFORMANCE OF THE SAMPLE SCRIPTS,
+TEMPLATES, AND DOCUMENTATION REMAINS WITH YOU. IN NO EVENT SHALL MICROSOFT,
+ITS AUTHORS, OR ANYONE ELSE INVOLVED IN THE CREATION, PRODUCTION, OR DELIVERY
+OF THE SCRIPTS BE LIABLE FOR ANY DAMAGES WHATSOEVER (INCLUDING, WITHOUT
+LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS
+OF BUSINESS INFORMATION, OR OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF
+OR INABILITY TO USE THE SAMPLE SCRIPTS, TEMPLATES, OR DOCUMENTATION, EVEN IF
+MICROSOFT HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 ```
 
-### Before Using These Scripts
+### Before Using Anything in This Repository
 
-1. **REVIEW** - Read the script code and documentation to understand what operations it performs
-2. **TEST** - Run in a non-production environment first
-3. **AUTHORIZE** - Ensure you have proper authorization to run security simulations
-4. **COMPLY** - Verify compliance with your organization's security policies
-5. **ISOLATE** - DO NOT run on production systems with active workloads
+1. **REVIEW** — Read the script/template code and documentation to understand what it does
+2. **TEST** — Always run in a **non-production environment** first
+3. **AUTHORIZE** — Ensure you have proper authorization and permissions
+4. **COMPLY** — Verify compliance with your organization's security policies
+5. **UNDERSTAND COSTS** — Some deployments create billable Azure resources (see individual READMEs)
+6. **ISOLATE** — Do NOT run simulation scripts on production systems with active workloads
 
-These are unofficial scripts provided for testing and educational purposes only.
+These are **unofficial community tools** provided for **educational and experimental purposes only**. They are **not** Microsoft products.
 
 ---
 
 ## 📚 Additional Resources
 
 - [Microsoft Defender for Containers Documentation](https://learn.microsoft.com/en-us/azure/defender-for-cloud/defender-for-containers-introduction)
-- [Official Attack Simulation Tool Repository](https://github.com/microsoft/Defender-for-Cloud-Attack-Simulation)
+- [Microsoft Sentinel Documentation](https://learn.microsoft.com/en-us/azure/sentinel/)
+- [Security Copilot Documentation](https://learn.microsoft.com/en-us/security-copilot/)
+- [Official Defender Attack Simulation Repository](https://github.com/microsoft/Defender-for-Cloud-Attack-Simulation)
 - [Container Security Alerts Reference](https://learn.microsoft.com/en-us/azure/defender-for-cloud/alerts-containers)
 
 ---
 
 ## 📜 License
 
-This project is provided under the MIT License. See [LICENSE](LICENSE) for details.
+This project is provided under the [MIT License](LICENSE) with additional disclaimers. See [LICENSE](LICENSE) for details.

@@ -12,7 +12,7 @@ The Sentinel [`Incidents – Create Or Update`](https://learn.microsoft.com/en-u
 
 This is **by-design API behavior**, not a bug in any agent. The updating service simply doesn't preserve fields it didn't set.
 
-### Who is affected?
+### Who may be impacted?
 
 Any organization that:
 - Uses **incident tags** to trigger automation rules, playbooks, or SOAR workflows

@@ -59,6 +59,11 @@ param(
     [int]$RuleOrder = 1
 )
 
+#Requires -Version 7.0
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
 # ── Banner ──────────────────────────────────────────────────────────────────
 $banner = @"
 
@@ -83,12 +88,16 @@ Write-Host "It will create an Automation Rule in your Sentinel workspace." -Fore
 Write-Host "No warranty is provided. You are responsible for any changes." -ForegroundColor Yellow
 Write-Host ""
 
-$isInteractive = [Environment]::UserInteractive -and -not ([Environment]::GetCommandLineArgs() -match '-NonInteractive')
-if ($isInteractive -and -not $TagsToProtect) {
-    $confirm = Read-Host "Type YES to continue"
-    if ($confirm -ne "YES") {
-        Write-Host "Aborted by user." -ForegroundColor Red
-        return
+$isNonInteractive = [Environment]::GetCommandLineArgs() -match '-NonInteractive'
+if (-not $isNonInteractive -and -not $TagsToProtect) {
+    try {
+        $confirm = Read-Host "Type YES to continue"
+        if ($confirm -ne "YES") {
+            Write-Host "Aborted by user." -ForegroundColor Red
+            return
+        }
+    } catch {
+        # Non-interactive session (e.g., piped input) — skip confirmation
     }
 }
 
@@ -129,7 +138,7 @@ function Get-BearerToken {
 Write-Host "[3/5] Selecting subscription and workspace..." -ForegroundColor White
 
 if (-not $SubscriptionId) {
-    $subs = Get-AzSubscription | Where-Object { $_.State -eq 'Enabled' }
+    $subs = @(Get-AzSubscription | Where-Object { $_.State -eq 'Enabled' })
     if ($subs.Count -eq 0) { Write-Error "No enabled subscriptions found."; return }
     if ($subs.Count -eq 1) {
         $SubscriptionId = $subs[0].Id
@@ -140,10 +149,12 @@ if (-not $SubscriptionId) {
             Write-Host "    [$($i+1)] $($subs[$i].Name) ($($subs[$i].Id))"
         }
         $choice = Read-Host "  Select subscription (1-$($subs.Count))"
-        $SubscriptionId = $subs[[int]$choice - 1].Id
+        $idx = [int]$choice - 1
+        if ($idx -lt 0 -or $idx -ge $subs.Count) { Write-Error "Invalid selection."; return }
+        $SubscriptionId = $subs[$idx].Id
     }
 }
-Set-AzContext -SubscriptionId $SubscriptionId | Out-Null
+Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop | Out-Null
 
 # ── Discover Sentinel workspaces ───────────────────────────────────────────
 if (-not $WorkspaceName -or -not $ResourceGroupName) {
@@ -190,6 +201,7 @@ if (-not $WorkspaceName -or -not $ResourceGroupName) {
         }
         $choice = Read-Host "  Select workspace (1-$($sentinelWorkspaces.Count))"
         $idx = [int]$choice - 1
+        if ($idx -lt 0 -or $idx -ge $sentinelWorkspaces.Count) { Write-Error "Invalid selection."; return }
         $WorkspaceName = $sentinelWorkspaces[$idx].Name
         $ResourceGroupName = $sentinelWorkspaces[$idx].ResourceGroup
     }

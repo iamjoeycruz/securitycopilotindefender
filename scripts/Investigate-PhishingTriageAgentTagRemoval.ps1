@@ -926,48 +926,61 @@ This would prevent the issue at the platform level.
 <!-- ═══════ SAMPLE PLAYBOOK ═══════ -->
 <h2 id="playbook">&#128736;&#65039; Deploy the Fix</h2>
 <div class="card">
-<p style="margin-bottom:.8rem">Two files are included alongside this report for a <strong>one-command deployment</strong>:</p>
 
-<table style="width:auto">
-<tr><td><strong><code>Restore-SentinelTags-Playbook.json</code></strong></td><td>ARM template &mdash; Logic App that auto-restores stripped tags</td></tr>
-<tr><td><strong><code>Deploy-TagRestorationPlaybook.ps1</code></strong></td><td>Deployment script &mdash; deploys + configures RBAC + creates automation rule</td></tr>
+<h3>Option A: One-Click Deploy to Azure (Recommended)</h3>
+<p style="margin-bottom:.8rem">Click the button below to deploy the tag-restoration Logic App directly from GitHub:</p>
+<p style="text-align:center;margin:1rem 0">
+<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fiamjoeycruz%2Fsecuritycopilotindefender%2Fmain%2Fremediation%2Frestore-sentinel-incident-tags%2Fazuredeploy.json"
+   style="display:inline-block;background:#0078d4;color:#fff;padding:.6rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:.95rem">
+&#9729;&#65039; Deploy to Azure
+</a>
+</p>
+<p style="color:#8b949e;font-size:.85rem">
+Source: <a href="https://github.com/iamjoeycruz/securitycopilotindefender/tree/main/remediation/restore-sentinel-incident-tags" style="color:var(--blu)">github.com/iamjoeycruz/securitycopilotindefender</a>
+</p>
+
+<p style="margin-top:.8rem"><strong>Fill in these parameters:</strong></p>
+<table style="width:auto;font-size:.85rem">
+<tr><td><strong>Resource Group</strong></td><td>Same resource group as your Sentinel workspace (<code>$ResourceGroup</code>)</td></tr>
+<tr><td><strong>Playbook Name</strong></td><td><code>Restore-SentinelIncidentTags</code> (default)</td></tr>
+<tr><td><strong>Required Tags</strong></td><td><code>$(if($ExpectedTags){$ExpectedTags -join ','}else{'AutoRemediate,PhishingReview'})</code></td></tr>
 </table>
 
-<h3>Option A: One-Command Deployment (Recommended)</h3>
-<pre><code># Run from the directory containing both files:
-.\Deploy-TagRestorationPlaybook.ps1 `
-    -SubscriptionId  "$SubscriptionId" `
-    -ResourceGroup   "$ResourceGroup" `
-    -WorkspaceName   "$WorkspaceName" `
-    -RequiredTags    "$(if($ExpectedTags){$ExpectedTags -join ','}else{'AutoRemediate,PhishingReview'})"</code></pre>
-<p style="color:#8b949e;font-size:.85rem">This will: deploy the Logic App &rarr; assign Sentinel Responder role &rarr; create the Automation Rule.</p>
+<h3>Option B: Azure CLI</h3>
+<pre><code>az deployment group create \
+  --resource-group "$ResourceGroup" \
+  --template-uri "https://raw.githubusercontent.com/iamjoeycruz/securitycopilotindefender/main/remediation/restore-sentinel-incident-tags/azuredeploy.json" \
+  --parameters RequiredTags="$(if($ExpectedTags){$ExpectedTags -join ','}else{'AutoRemediate,PhishingReview'})"</code></pre>
 
-<h3>Option B: Manual Azure Portal Deployment</h3>
+<h3 style="margin-top:1.5rem">Post-Deployment Steps (Required)</h3>
 <ol class="steps" style="margin-left:1.2rem">
-<li>Go to <strong>Azure Portal &rarr; Deploy a custom template</strong></li>
-<li>Click <em>&ldquo;Build your own template in the editor&rdquo;</em></li>
-<li>Paste the contents of <code>Restore-SentinelTags-Playbook.json</code></li>
-<li>Fill in: Resource Group, Workspace Name, Required Tags</li>
-<li>Click <strong>Review + Create</strong></li>
-<li>After deployment, go to <strong>Sentinel &rarr; Automation &rarr; Create &rarr; Automation Rule</strong>:
+<li><strong>Authorize the API Connection:</strong> Azure Portal &rarr; Resource Group &rarr; open <code>azuresentinel-Restore-*</code> &rarr; Edit API connection &rarr; Authorize &rarr; Save</li>
+<li><strong>Grant RBAC:</strong> Log Analytics Workspace &rarr; Access control (IAM) &rarr; Add role assignment &rarr; <strong>Microsoft Sentinel Responder</strong> &rarr; Managed Identity &rarr; Logic App &rarr; <code>Restore-SentinelIncidentTags</code></li>
+<li><strong>Create Automation Rule:</strong> Sentinel &rarr; Automation &rarr; Create &rarr;
   <ul>
     <li>Trigger: <em>When incident is updated</em></li>
+    <li>Condition: <em>Incident provider contains Microsoft 365 Defender</em> (or leave blank for all)</li>
     <li>Action: <em>Run playbook &rarr; Restore-SentinelIncidentTags</em></li>
     <li>Order: <code>100</code></li>
   </ul>
 </li>
-<li>Go to the Logic App &rarr; <strong>API connections</strong> &rarr; Authorize the Sentinel connection</li>
-<li>Assign <strong>Microsoft Sentinel Responder</strong> role to the Logic App&rsquo;s managed identity on the workspace</li>
 </ol>
 
 <h3>What the Playbook Does</h3>
 <pre><code>Trigger:  Sentinel Automation Rule fires on "Incident Updated"
           &darr;
-Step 1:   GET /incidents/{id} — reads the full incident with current labels
+Step 1:   GET /incidents/{id} &mdash; reads the full incident with current labels
           &darr;
 Step 2:   Compare current labels against your required tags list
-          (e.g., AutoRemediate, PhishingReview)
+          (e.g., $(if($ExpectedTags){$ExpectedTags -join ', '}else{'AutoRemediate, PhishingReview'}))
           &darr;
+Step 3:   IF any required tags are missing:
+            - Merge: current labels &cup; missing tags
+            - PUT /incidents/{id} with etag &mdash; writes the full label set back
+            - Log: "Restored [missing tags]"
+          ELSE:
+            - Log: "Tags intact, no action needed"</code></pre>
+<p style="color:#8b949e;font-size:.85rem;margin-top:.5rem">Uses <strong>System Managed Identity</strong> (no credentials). The <code>etag</code> header prevents race conditions. Cost: &lt; &#36;1/month.</p>
 Step 3:   IF any required tags are missing:
             - Merge: current labels ∪ missing tags
             - PUT /incidents/{id} with etag — writes the full label set back

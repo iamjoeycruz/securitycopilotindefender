@@ -218,11 +218,14 @@ Not sure if tag removal is actually happening in your environment? Run the diagn
 .\scripts\Investigate-PhishingTriageAgentTagRemoval.ps1
 ```
 
+📖 **[Full instructions and prerequisites](../scripts/README.md#investigate-phishingtriageagenttagremovalps1)** | 📄 **[View the script](../scripts/Investigate-PhishingTriageAgentTagRemoval.ps1)**
+
 The diagnostic script:
 - ✅ Scans your Sentinel incidents for missing tags (read-only)
 - ✅ Runs KQL queries to identify which actors are stripping tags
 - ✅ Generates an HTML report with findings, evidence, and remediation steps
 - ✅ **Does NOT modify any resources**
+- 📊 **[See a sample report](../samples/sample-diagnostic-report.html)**
 
 ---
 

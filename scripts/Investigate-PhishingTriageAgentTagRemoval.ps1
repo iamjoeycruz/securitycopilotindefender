@@ -48,6 +48,8 @@ param(
     [string]$ReportPath
 )
 
+#Requires -Version 7.0
+
 $ErrorActionPreference = "Continue"
 Add-Type -AssemblyName System.Web -ErrorAction SilentlyContinue
 
@@ -108,8 +110,8 @@ $script:Report = [ordered]@{
     LookbackDays     = $LookbackDays
     ExpectedTags     = ""
     Findings         = [System.Collections.Generic.List[object]]::new()
-    IncidentStats    = @{}
-    ActivityLog      = @{}
+    IncidentStats    = @{ Total=0; Phishing=0; WithTags=0; WithoutTags=0; TagDist=@(); MissingExp=@() }
+    ActivityLog      = @{ Total=0; Agent=0; Samples=@() }
     KQL              = [ordered]@{}
     Verdict          = ""
     Errors           = [System.Collections.Generic.List[string]]::new()
@@ -455,7 +457,7 @@ try {
         MissingExp   = $missingExpected
     }
 
-    Write-Host "    Total: $($allInc.Count)  Phishing: $($phish.Count)  " -NoNewline
+    Write-Host "    Total: $($allIncRaw.Count)  Phishing: $($phish.Count)  " -NoNewline
     Write-Host "With tags: $($withTags.Count)  " -ForegroundColor Green -NoNewline
     Write-Host "Without: $($withoutTags.Count)" -ForegroundColor $(if($withoutTags.Count){'Red'}else{'Green'})
 
@@ -941,14 +943,14 @@ Source: <a href="https://github.com/iamjoeycruz/securitycopilotindefender/tree/m
 
 <p style="margin-top:.8rem"><strong>Fill in these parameters:</strong></p>
 <table style="width:auto;font-size:.85rem">
-<tr><td><strong>Resource Group</strong></td><td>Same resource group as your Sentinel workspace (<code>$ResourceGroup</code>)</td></tr>
+<tr><td><strong>Resource Group</strong></td><td>Same resource group as your Sentinel workspace (<code>$ResourceGroupName</code>)</td></tr>
 <tr><td><strong>Playbook Name</strong></td><td><code>Restore-SentinelIncidentTags</code> (default)</td></tr>
 <tr><td><strong>Required Tags</strong></td><td><code>$(if($ExpectedTags){$ExpectedTags -join ','}else{'AutoRemediate,PhishingReview'})</code></td></tr>
 </table>
 
 <h3>Option B: Azure CLI</h3>
 <pre><code>az deployment group create \
-  --resource-group "$ResourceGroup" \
+  --resource-group "$ResourceGroupName" \
   --template-uri "https://raw.githubusercontent.com/iamjoeycruz/securitycopilotindefender/main/remediation/restore-sentinel-incident-tags/azuredeploy.json" \
   --parameters RequiredTags="$(if($ExpectedTags){$ExpectedTags -join ','}else{'AutoRemediate,PhishingReview'})"</code></pre>
 
@@ -981,13 +983,6 @@ Step 3:   IF any required tags are missing:
           ELSE:
             - Log: "Tags intact, no action needed"</code></pre>
 <p style="color:#8b949e;font-size:.85rem;margin-top:.5rem">Uses <strong>System Managed Identity</strong> (no credentials). The <code>etag</code> header prevents race conditions. Cost: &lt; &#36;1/month.</p>
-Step 3:   IF any required tags are missing:
-            - Merge: current labels ∪ missing tags
-            - PUT /incidents/{id} with etag — writes the full label set back
-            - Log: "Restored [missing tags]"
-          ELSE:
-            - Log: "Tags intact, no action needed"</code></pre>
-<p style="color:#8b949e;font-size:.85rem;margin-top:.5rem">The playbook uses the Logic App&rsquo;s <strong>System Managed Identity</strong> for authentication &mdash; no credentials to manage. The <code>etag</code> header prevents race conditions.</p>
 
 <h3>After Deployment — Verify It Works</h3>
 <ol class="steps" style="margin-left:1.2rem">
@@ -1040,7 +1035,14 @@ Share this report with your Microsoft support contact or SOC team.</p>
 </body></html>
 "@
 
-$html | Out-File -FilePath $ReportPath -Encoding utf8 -Force
+try {
+    $html | Out-File -FilePath $ReportPath -Encoding utf8 -Force
+} catch {
+    $fallback = Join-Path $env:TEMP "PhishingTriageAgent_Report_$(Get-Date -Format 'yyyyMMdd_HHmmss').html"
+    Write-Host "  ⚠  Could not write to $ReportPath — writing to $fallback" -ForegroundColor Yellow
+    $html | Out-File -FilePath $fallback -Encoding utf8 -Force
+    $ReportPath = $fallback
+}
 
 # ╔════════════════════════════════════════════════════════════════════════════╗
 # ║  DONE                                                                    ║

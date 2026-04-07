@@ -176,30 +176,30 @@ function Write-DeploymentReport {
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <title>Tag Protection Automation Rule — Deployment Report</title>
 <style>
-:root{--bg:#0d1117;--fg:#c9d1d9;--card:#161b22;--border:#30363d;
---red:#f85149;--yel:#d29922;--grn:#3fb950;--blu:#58a6ff}
+:root{--bg:#ffffff;--fg:#1e293b;--card:#f8fafc;--border:#e2e8f0;
+--red:#dc2626;--yel:#d97706;--grn:#059669;--blu:#2563eb}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--fg);padding:2rem;line-height:1.6;max-width:1000px;margin:0 auto}
 h1{color:var(--blu);font-size:1.5rem;margin-bottom:.3rem}
 h2{color:var(--fg);border-bottom:1px solid var(--border);padding-bottom:.4rem;margin:2rem 0 1rem;font-size:1.15rem}
 h3{color:var(--blu);margin:1rem 0 .5rem;font-size:1rem}
-.meta{color:#8b949e;font-size:.85rem;margin-bottom:1.5rem}
+.meta{color:#64748b;font-size:.85rem;margin-bottom:1.5rem}
 table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.82rem}
-th{background:#21262d;color:var(--blu);text-align:left;padding:.45rem .6rem;border:1px solid var(--border)}
+th{background:#f1f5f9;color:var(--blu);text-align:left;padding:.45rem .6rem;border:1px solid var(--border)}
 td{padding:.35rem .6rem;border:1px solid var(--border);vertical-align:top}
-tr:nth-child(even) td{background:#0d1117}
+tr:nth-child(even) td{background:#f8fafc}
 .badge{padding:2px 8px;border-radius:4px;font-weight:600;font-size:.72rem;text-transform:uppercase}
-.badge.pass{background:#0d2818;color:var(--grn)}
-.badge.critical{background:#3d1114;color:var(--red)}
-.badge.warning{background:#3d2e00;color:var(--yel)}
-.badge.info{background:#0c2d6b;color:var(--blu)}
+.badge.pass{background:#f0fdf4;color:var(--grn)}
+.badge.critical{background:#fef2f2;color:var(--red)}
+.badge.warning{background:#fffbeb;color:var(--yel)}
+.badge.info{background:#eff6ff;color:var(--blu)}
 .verdict{font-size:1.15rem;font-weight:700;padding:1rem 1.5rem;border-radius:8px;margin:1.5rem 0;text-align:center}
-.verdict.pass{background:#0d2818;color:var(--grn);border:1px solid var(--grn)}
-.verdict.critical{background:#3d1114;color:var(--red);border:1px solid var(--red)}
+.verdict.pass{background:#f0fdf4;color:var(--grn);border:1px solid var(--grn)}
+.verdict.critical{background:#fef2f2;color:var(--red);border:1px solid var(--red)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.2rem 1.5rem;margin:1rem 0}
-code{background:#21262d;padding:1px 5px;border-radius:3px;font-size:.85rem}
-.disclaimer{background:#1a1500;border:1px solid #5a4a00;border-radius:6px;padding:.8rem 1rem;margin:.8rem 0;font-size:.78rem;color:#d29922}
-.disclaimer strong{color:#f0c040}
+code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-size:.85rem;color:#1e293b}
+.disclaimer{background:#fffbeb;border:1px solid #d97706;border-radius:6px;padding:.8rem 1rem;margin:.8rem 0;font-size:.78rem;color:#92400e}
+.disclaimer strong{color:#b45309}
 ol.steps{margin:.5rem 0 0 1.2rem}ol.steps li{margin:.4rem 0}
 </style></head><body>
 

@@ -704,7 +704,7 @@ $impactedIncidentsHtml = ""
 if ($kqlTagsVanished -and $kqlTagsVanished.Count -gt 0) {
     $impactedIncidentsHtml = @"
 <h3 style='margin-top:1.2rem'>&#128163; Incidents With Tags Stripped (Confirmed by KQL)</h3>
-<p style='color:#8b949e;font-size:.85rem;margin-bottom:.5rem'>These incidents <strong>had tags</strong> at some point but currently have <strong>zero tags</strong>. This is your evidence that tag stripping is occurring.</p>
+<p style='color:#64748b;font-size:.85rem;margin-bottom:.5rem'>These incidents <strong>had tags</strong> at some point but currently have <strong>zero tags</strong>. This is your evidence that tag stripping is occurring.</p>
 <table><thead><tr><th>Incident #</th><th>Title</th><th>Tags At Peak</th><th>Tags Now</th><th>Updates</th><th>Last Modified</th></tr></thead><tbody>
 "@
     foreach ($row in $kqlTagsVanished.Rows | Select-Object -First 25) {
@@ -728,51 +728,51 @@ $html = @"
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <title>Phishing Triage Agent Diagnostic Report</title>
 <style>
-:root{--bg:#0d1117;--fg:#c9d1d9;--card:#161b22;--border:#30363d;
---red:#f85149;--yel:#d29922;--grn:#3fb950;--blu:#58a6ff;--purple:#bc8cff}
+:root{--bg:#ffffff;--fg:#1e293b;--card:#f8fafc;--border:#e2e8f0;
+--red:#dc2626;--yel:#d97706;--grn:#059669;--blu:#2563eb;--purple:#7c3aed}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--fg);padding:2rem;line-height:1.6;max-width:1200px;margin:0 auto}
 h1{color:var(--blu);font-size:1.6rem;margin-bottom:.3rem}
 h2{color:var(--fg);border-bottom:1px solid var(--border);padding-bottom:.4rem;margin:2.5rem 0 1rem;font-size:1.2rem}
 h3{color:var(--blu);margin:1rem 0 .5rem;font-size:1rem}
-.meta{color:#8b949e;font-size:.85rem;margin-bottom:1.5rem}
+.meta{color:#64748b;font-size:.85rem;margin-bottom:1.5rem}
 .verdict{font-size:1.2rem;font-weight:700;padding:1rem 1.5rem;border-radius:8px;margin:1.5rem 0;text-align:center}
-.verdict.critical{background:#3d1114;color:var(--red);border:1px solid var(--red)}
-.verdict.warning{background:#3d2e00;color:var(--yel);border:1px solid var(--yel)}
-.verdict.pass{background:#0d2818;color:var(--grn);border:1px solid var(--grn)}
+.verdict.critical{background:#fef2f2;color:var(--red);border:1px solid var(--red)}
+.verdict.warning{background:#fffbeb;color:var(--yel);border:1px solid var(--yel)}
+.verdict.pass{background:#f0fdf4;color:var(--grn);border:1px solid var(--grn)}
 table{width:100%;border-collapse:collapse;margin:.8rem 0 1.2rem;font-size:.82rem}
-th{background:#21262d;color:var(--blu);text-align:left;padding:.45rem .6rem;border:1px solid var(--border)}
+th{background:#f1f5f9;color:var(--blu);text-align:left;padding:.45rem .6rem;border:1px solid var(--border)}
 td{padding:.35rem .6rem;border:1px solid var(--border);vertical-align:top}
-tr:nth-child(even) td{background:#0d1117}
+tr:nth-child(even) td{background:#f8fafc}
 .badge{padding:2px 8px;border-radius:4px;font-weight:600;font-size:.72rem;text-transform:uppercase}
-.badge.critical{background:#3d1114;color:var(--red)}.badge.warning{background:#3d2e00;color:var(--yel)}
-.badge.info{background:#0c2d6b;color:var(--blu)}.badge.pass{background:#0d2818;color:var(--grn)}
+.badge.critical{background:#fef2f2;color:var(--red)}.badge.warning{background:#fffbeb;color:var(--yel)}
+.badge.info{background:#eff6ff;color:var(--blu)}.badge.pass{background:#f0fdf4;color:var(--grn)}
 details{margin:.5rem 0}summary{cursor:pointer;color:var(--blu);font-size:.85rem}
-pre{background:#0d1117;border:1px solid var(--border);padding:.8rem;overflow-x:auto;font-size:.78rem;border-radius:6px;margin-top:.4rem}
-code{color:#c9d1d9}
+pre{background:#f8fafc;border:1px solid var(--border);padding:.8rem;overflow-x:auto;font-size:.78rem;border-radius:6px;margin-top:.4rem}
+code{color:#1e293b;background:#f1f5f9;padding:1px 5px;border-radius:3px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.2rem 1.5rem;margin:1rem 0}
-.rc{background:#1a1e24;border-left:4px solid var(--yel);padding:1rem 1.2rem;margin:1rem 0;border-radius:0 6px 6px 0}
+.rc{background:#fffbeb;border-left:4px solid var(--yel);padding:1rem 1.2rem;margin:1rem 0;border-radius:0 6px 6px 0}
 .exec-summary{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.5rem 2rem;margin:1.5rem 0}
 .exec-summary p{margin:.5rem 0;font-size:.95rem}
-.quick-action{background:#0c2d6b;border:1px solid var(--blu);border-radius:8px;padding:1rem 1.5rem;margin:1rem 0;display:flex;align-items:center;gap:.8rem}
+.quick-action{background:#eff6ff;border:1px solid var(--blu);border-radius:8px;padding:1rem 1.5rem;margin:1rem 0;display:flex;align-items:center;gap:.8rem}
 .quick-action .icon{font-size:1.5rem;flex-shrink:0}
 .quick-action .text{font-size:.9rem}
 .quick-action .text strong{color:var(--blu)}
-.num-circle{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--blu);color:var(--bg);font-weight:700;font-size:.8rem;margin-right:.6rem;flex-shrink:0}
+.num-circle{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--blu);color:#fff;font-weight:700;font-size:.8rem;margin-right:.6rem;flex-shrink:0}
 .rec{display:flex;align-items:flex-start;margin:.9rem 0}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.8rem;margin:1rem 0}
 .stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.8rem;text-align:center}
-.stat .n{font-size:1.8rem;font-weight:700}.stat .l{font-size:.75rem;color:#8b949e}
-.kql{margin:1rem 0 1.5rem}.count{font-size:.8rem;color:#8b949e;font-weight:400}
-.empty{color:#8b949e;font-style:italic}
+.stat .n{font-size:1.8rem;font-weight:700}.stat .l{font-size:.75rem;color:#64748b}
+.kql{margin:1rem 0 1.5rem}.count{font-size:.8rem;color:#64748b;font-weight:400}
+.empty{color:#64748b;font-style:italic}
 ol.steps{margin:.5rem 0 0 1.2rem}ol.steps li{margin:.3rem 0}
 .section-nav{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0}
-.section-nav a{background:#21262d;color:var(--blu);padding:.3rem .8rem;border-radius:4px;text-decoration:none;font-size:.8rem}
-.section-nav a:hover{background:#30363d}
-.highlight-box{border:1px solid var(--red);border-radius:8px;padding:1rem;margin:.5rem 0;background:#1a0000}
+.section-nav a{background:#f1f5f9;color:var(--blu);padding:.3rem .8rem;border-radius:4px;text-decoration:none;font-size:.8rem}
+.section-nav a:hover{background:#e2e8f0}
+.highlight-box{border:1px solid var(--red);border-radius:8px;padding:1rem;margin:.5rem 0;background:#fef2f2}
 .toc-section{margin:.3rem 0}
-.disclaimer{background:#1a1500;border:1px solid #5a4a00;border-radius:6px;padding:.8rem 1rem;margin:.8rem 0;font-size:.78rem;color:#d29922}
-.disclaimer strong{color:#f0c040}
+.disclaimer{background:#fffbeb;border:1px solid #d97706;border-radius:6px;padding:.8rem 1rem;margin:.8rem 0;font-size:.78rem;color:#92400e}
+.disclaimer strong{color:#b45309}
 </style></head><body>
 
 <h1>&#128270; Phishing Triage Agent &mdash; Tag Removal Diagnostic Report</h1>
@@ -871,7 +871,7 @@ $(To-HtmlTable $script:Report.ActivityLog.Samples)
 
 <!-- ═══════ KQL EVIDENCE ═══════ -->
 <h2 id="kql">&#128270; KQL Evidence (Deep-Dive)</h2>
-<p style="color:#8b949e;font-size:.85rem;margin-bottom:.5rem">
+<p style="color:#64748b;font-size:.85rem;margin-bottom:.5rem">
 These queries ran against your Log Analytics workspace. Expand any query to copy it into <strong>Sentinel &rarr; Logs</strong> for further investigation.
 </p>
 $($kqlSections -join "`n")
@@ -880,7 +880,7 @@ $($kqlSections -join "`n")
 <h2 id="fix">&#9989; Recommended Actions</h2>
 <div class="card">
 
-<p style="color:#8b949e;margin-bottom:1rem">Listed in order of effectiveness. Action 1 alone will resolve the immediate issue.</p>
+<p style="color:#64748b;margin-bottom:1rem">Listed in order of effectiveness. Action 1 alone will resolve the immediate issue.</p>
 
 <div class="rec"><span class="num-circle">1</span><div>
 <strong>Deploy a Tag-Restoration Automation Rule (Immediate Fix)</strong><br/>
@@ -937,7 +937,7 @@ This would prevent the issue at the platform level.
 &#9729;&#65039; Deploy to Azure
 </a>
 </p>
-<p style="color:#8b949e;font-size:.85rem">
+<p style="color:#64748b;font-size:.85rem">
 Source: <a href="https://github.com/iamjoeycruz/securitycopilotindefender/tree/main/remediation/restore-sentinel-incident-tags" style="color:var(--blu)">github.com/iamjoeycruz/securitycopilotindefender</a>
 </p>
 
@@ -982,7 +982,7 @@ Step 3:   IF any required tags are missing:
             - Log: "Restored [missing tags]"
           ELSE:
             - Log: "Tags intact, no action needed"</code></pre>
-<p style="color:#8b949e;font-size:.85rem;margin-top:.5rem">Uses <strong>System Managed Identity</strong> (no credentials). The <code>etag</code> header prevents race conditions. Cost: &lt; &#36;1/month.</p>
+<p style="color:#64748b;font-size:.85rem;margin-top:.5rem">Uses <strong>System Managed Identity</strong> (no credentials). The <code>etag</code> header prevents race conditions. Cost: &lt; &#36;1/month.</p>
 
 <h3>After Deployment — Verify It Works</h3>
 <ol class="steps" style="margin-left:1.2rem">
@@ -1001,7 +1001,7 @@ Step 3:   IF any required tags are missing:
 <tr><td>RBAC Assignment</td><td>Role Assignment</td><td>Grants Logic App &ldquo;Sentinel Responder&rdquo; to read/write incidents</td><td>Free</td></tr>
 <tr><td>Automation Rule</td><td>Sentinel Automation Rule</td><td>Triggers the Logic App when any incident is updated</td><td>Free (included with Sentinel)</td></tr>
 </tbody></table>
-<p style="color:#8b949e;font-size:.8rem;margin-top:.5rem">&#9888;&#65039; <strong>To remove:</strong> Delete the Logic App and Automation Rule from the Azure Portal. The RBAC assignment is automatically cleaned up when the Logic App identity is deleted.</p>
+<p style="color:#64748b;font-size:.8rem;margin-top:.5rem">&#9888;&#65039; <strong>To remove:</strong> Delete the Logic App and Automation Rule from the Azure Portal. The RBAC assignment is automatically cleaned up when the Logic App identity is deleted.</p>
 
 <div class="disclaimer" style="margin-top:1rem">
 <strong>&#9888;&#65039; DEPLOYMENT DISCLAIMER:</strong> The tag-restoration playbook is provided <strong>&ldquo;AS IS&rdquo;</strong>

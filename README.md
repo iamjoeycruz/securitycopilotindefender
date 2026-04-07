@@ -6,6 +6,54 @@ Unofficial PowerShell scripts, ARM templates, and playbooks to help security adm
 
 ---
 
+## 🚀 Getting Started
+
+### Prerequisites
+
+| Requirement | Details |
+|-------------|---------|
+| **PowerShell 7+** | [Install PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell). Check with `$PSVersionTable.PSVersion` |
+| **Azure PowerShell Modules** | See individual script requirements below |
+| **Azure Permissions** | At minimum **Sentinel Reader** (diagnostic) or **Sentinel Contributor** (remediation) |
+| **Git** | To clone this repo |
+
+### Step 1: Clone the Repository
+
+```powershell
+git clone https://github.com/iamjoeycruz/securitycopilotindefender.git
+cd securitycopilotindefender
+```
+
+### Step 2: Install Azure PowerShell Modules
+
+```powershell
+# For the diagnostic script
+Install-Module Az.Accounts, Az.SecurityInsights, Az.Monitor, Az.OperationalInsights -Scope CurrentUser -Force
+
+# For the remediation script (only needs Az.Accounts)
+Install-Module Az.Accounts -Scope CurrentUser -Force
+```
+
+### Step 3: Authenticate to Azure
+
+```powershell
+Connect-AzAccount
+```
+
+> If your Sentinel workspace is in a specific tenant, use: `Connect-AzAccount -TenantId "your-tenant-id"`
+
+### Step 4: Run the Tool You Need
+
+| Goal | Command |
+|------|---------|
+| **Diagnose** tag stripping | `.\scripts\Investigate-PhishingTriageAgentTagRemoval.ps1` |
+| **Fix** with Automation Rule (free) | `.\remediation\Deploy-TagProtectionAutomationRule.ps1` |
+| **Fix** with Logic App (dynamic) | [Deploy to Azure](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fiamjoeycruz%2Fsecuritycopilotindefender%2Fmain%2Fremediation%2Frestore-sentinel-incident-tags%2Fazuredeploy.json) |
+
+All scripts support **interactive mode** (no parameters — walks you through everything) and **parameterized mode** (pass all values for automation). See the individual sections below for detailed instructions.
+
+---
+
 ## 📂 Repository Structure
 
 ```
@@ -19,6 +67,10 @@ Unofficial PowerShell scripts, ARM templates, and playbooks to help security adm
 │   └── restore-sentinel-incident-tags/
 │       ├── azuredeploy.json         # One-click Deploy to Azure (Logic App)
 │       └── README.md                # Deployment guide
+│
+├── samples/                         # Anonymized sample report outputs
+│   ├── sample-diagnostic-report.html
+│   └── sample-deployment-report.html
 │
 ├── demos/                           # Demo content & guidebooks
 │   └── human-operated-ransomware-guidebook.txt
@@ -90,8 +142,10 @@ Investigates whether the Security Copilot Phishing Triage Agent (or other servic
 | | |
 |---|---|
 | **Script** | [`scripts/Investigate-PhishingTriageAgentTagRemoval.ps1`](scripts/Investigate-PhishingTriageAgentTagRemoval.ps1) |
+| **Detailed Instructions** | 📖 **[scripts/README.md](scripts/README.md#investigate-phishingtriageagenttagremovalps1)** |
 | **Type** | Read-only diagnostic (does NOT modify any resources) |
 | **Requirements** | Az.Accounts, Az.SecurityInsights, Az.Monitor, Az.OperationalInsights |
+| **Output** | `PhishingTriageAgent_Report_YYYYMMDD_HHMMSS.html` |
 
 ```powershell
 # Interactive mode — walks you through everything
@@ -118,10 +172,11 @@ The simplest, free, Sentinel-native approach. Deploys an automation rule that re
 | | |
 |---|---|
 | **Script** | [`remediation/Deploy-TagProtectionAutomationRule.ps1`](remediation/Deploy-TagProtectionAutomationRule.ps1) |
+| **Detailed Instructions** | 📖 **[remediation/README.md](remediation/README.md#-option-1-automation-rule-recommended)** |
 | **Type** | Sentinel Automation Rule (native, no extra resources) |
 | **Cost** | **Free** — automation rules have no per-execution cost |
 | **Protects** | Specific tags you configure (e.g., `AutoEscalate`, `Tier2-Review`) |
-| **Limitation** | Only re-applies preconfigured tags, not dynamic; fires on severity changes |
+| **Output** | `TagProtection_DeployReport_YYYYMMDD_HHMMSS.html` |
 
 ```powershell
 # Interactive mode — walks you through everything
@@ -156,6 +211,15 @@ A Logic App that dynamically restores **any** tag that was stripped — it reads
 | I want zero cost | ✅ | ❌ |
 | I want zero extra Azure resources | ✅ | ❌ |
 | I need dynamic tag restoration from Activity Log | ❌ | ✅ |
+
+---
+
+## 📊 Sample Reports
+
+Want to see what the reports look like before running anything? Check the [`samples/`](samples/) directory for anonymized HTML report examples:
+
+- [**Diagnostic Report Sample**](samples/sample-diagnostic-report.html) — shows findings when tag stripping is detected
+- [**Deployment Report Sample**](samples/sample-deployment-report.html) — shows the output after deploying tag protection rules
 
 ---
 

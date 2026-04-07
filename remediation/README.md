@@ -49,13 +49,42 @@ Creates Automation Rule 2 (Create trigger):
 
 The "Add tags" action is **idempotent** — if the tag already exists, nothing happens. If it was stripped, it gets re-added.
 
-#### Quick Start
+#### Prerequisites
+
+| Requirement | Details |
+|-------------|---------|
+| **PowerShell** | 7.0 or later (`pwsh`). Check with `$PSVersionTable.PSVersion` |
+| **Azure Module** | `Az.Accounts` |
+| **Azure Permissions** | **Microsoft Sentinel Contributor** on the target workspace |
+| **Network** | Access to `management.azure.com` |
+
+Install the module (one-time):
 
 ```powershell
-# Interactive mode — walks you through everything
-.\Deploy-TagProtectionAutomationRule.ps1
+Install-Module Az.Accounts -Scope CurrentUser -Force
+```
 
-# Or pass parameters directly
+#### How to Run
+
+**Option A: Interactive mode (recommended for first-time users)**
+
+```powershell
+.\Deploy-TagProtectionAutomationRule.ps1
+```
+
+The wizard will:
+1. Check that `Az.Accounts` is installed
+2. Authenticate to Azure (or reuse an existing session)
+3. List your subscriptions and ask you to pick one
+4. List Sentinel-enabled workspaces and ask you to pick one
+5. Scan recent incidents and show which tags are currently in use
+6. Ask which tags you want to protect (comma-separated)
+7. Deploy two automation rules
+8. Verify deployment and generate an HTML report
+
+**Option B: Parameterized mode (for automation or repeat runs)**
+
+```powershell
 .\Deploy-TagProtectionAutomationRule.ps1 `
     -SubscriptionId "your-sub-id" `
     -ResourceGroupName "your-rg" `
@@ -63,22 +92,60 @@ The "Add tags" action is **idempotent** — if the tag already exists, nothing h
     -TagsToProtect "AutoEscalate","Tier2-Review","VIP-Customer"
 ```
 
-#### What the Script Does (Step by Step)
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `-SubscriptionId` | No* | Azure subscription ID containing your Sentinel workspace |
+| `-ResourceGroupName` | No* | Resource group containing the workspace |
+| `-WorkspaceName` | No* | Name of the Log Analytics workspace with Sentinel enabled |
+| `-TagsToProtect` | No* | Array of tag names to protect (e.g., `"Tag1","Tag2"`) |
 
-1. **Authenticates** to Azure (reuses existing session or prompts login)
-2. **Discovers** your subscriptions and Sentinel-enabled workspaces
-3. **Scans** recent incidents to show you which tags are currently in use
-4. **Asks** which tags you want to protect
-5. **Deploys** two automation rules via the Sentinel REST API:
-   - **Update rule** — fires when incident severity changes (catches most agent updates)
-   - **Create rule** — fires when any new incident is created
-6. **Verifies** deployment and shows a summary
+\* Required only if you want to skip the interactive prompts.
+
+#### What to Expect
+
+```
+[1/5] Checking prerequisites           — verifies Az.Accounts is installed
+[2/5] Connecting to Azure               — authenticates (or reuses session)
+[3/5] Finding Sentinel workspaces       — auto-discovers workspace
+[4/5] Discovering tags                  — scans incidents, shows tags in use
+[5/5] Deploying automation rules        — creates 2 rules via REST API
+```
+
+#### Output
+
+The script saves an HTML deployment report to your current directory:
+
+```
+TagProtection_DeployReport_YYYYMMDD_HHMMSS.html
+```
+
+The report includes:
+- **Deployment summary** — workspace, tags protected, rule IDs
+- **Rules deployed** — names, triggers, and actions for each rule
+- **Next steps** — how to verify, test, and manage the rules
+- **Disclaimer** — educational/experimental use notice
+
+Open the report in any browser:
+
+```powershell
+Start-Process ".\TagProtection_DeployReport_*.html"
+```
 
 #### Limitations
 
 - **Static tags only** — you must know in advance which tags to protect. If your tags change frequently, use Option 2 instead.
 - **Severity-change trigger** — the update rule fires when incident severity changes. If an update doesn't change severity, that specific update won't trigger the rule. In practice, the Phishing Triage Agent typically does change severity, so this covers most cases.
 - **Doesn't restore historical tags** — only protects going forward from when the rule is deployed.
+
+#### Verification
+
+After deployment, verify the rules are active:
+
+1. Go to **Microsoft Sentinel → Automation** in the Azure portal
+2. You should see two new rules:
+   - **Protect Critical Incident Tags** (update trigger)
+   - **Protect Critical Incident Tags (New Incidents)** (create trigger)
+3. Confirm both rules show **Status: Enabled**
 
 #### Removal
 

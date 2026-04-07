@@ -14,9 +14,10 @@ Unofficial PowerShell scripts, ARM templates, and playbooks to help security adm
 │   ├── Get-DefenderIncidentReport.ps1
 │   └── Investigate-PhishingTriageAgentTagRemoval.ps1
 │
-├── remediation/                     # Deployable fixes (ARM templates + Logic Apps)
+├── remediation/                     # Deployable fixes
+│   ├── Deploy-TagProtectionAutomationRule.ps1  # ⭐ Recommended (free)
 │   └── restore-sentinel-incident-tags/
-│       ├── azuredeploy.json         # One-click Deploy to Azure
+│       ├── azuredeploy.json         # One-click Deploy to Azure (Logic App)
 │       └── README.md                # Deployment guide
 │
 ├── demos/                           # Demo content & guidebooks
@@ -104,19 +105,57 @@ Investigates whether the Security Copilot Phishing Triage Agent (or other servic
 
 ---
 
-## 🔧 Remediation Playbooks
+## 🔧 Remediation — Protect Sentinel Incident Tags
 
-### Restore Sentinel Incident Tags
+The Phishing Triage Agent and Defender XDR alert correlation can strip tags/labels from Sentinel incidents, breaking tag-based automation. This happens because Sentinel's PUT API uses **full-replace semantics** — if the update payload omits the `labels` field, all existing tags are deleted.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fiamjoeycruz%2Fsecuritycopilotindefender%2Fmain%2Fremediation%2Frestore-sentinel-incident-tags%2Fazuredeploy.json)
+Choose the approach that fits your needs:
+
+### Option 1: Automation Rule ⭐ Recommended
+
+The simplest, free, Sentinel-native approach. Deploys an automation rule that re-applies your specified critical tags whenever an incident is updated.
 
 | | |
 |---|---|
-| **Problem** | The Phishing Triage Agent and Defender XDR alert correlation remove tags/labels from Sentinel incidents, breaking tag-based automation |
-| **Root Cause** | Sentinel's PUT API uses full-replace semantics — omitting the `labels` field deletes all existing tags |
-| **Solution** | Logic App playbook that auto-restores required tags within seconds of removal |
+| **Script** | [`remediation/Deploy-TagProtectionAutomationRule.ps1`](remediation/Deploy-TagProtectionAutomationRule.ps1) |
+| **Type** | Sentinel Automation Rule (native, no extra resources) |
+| **Cost** | **Free** — automation rules have no per-execution cost |
+| **Protects** | Specific tags you configure (e.g., `AutoEscalate`, `Tier2-Review`) |
+| **Limitation** | Only re-applies preconfigured tags, not dynamic; fires on severity changes |
+
+```powershell
+# Interactive mode — walks you through everything
+.\remediation\Deploy-TagProtectionAutomationRule.ps1
+
+# Or pass parameters directly
+.\remediation\Deploy-TagProtectionAutomationRule.ps1 `
+    -SubscriptionId "xxxx" -ResourceGroupName "rg" `
+    -WorkspaceName "ws" -TagsToProtect "AutoEscalate","Tier2-Review"
+```
+
+### Option 2: Logic App Playbook (Dynamic)
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fiamjoeycruz%2Fsecuritycopilotindefender%2Fmain%2Fremediation%2Frestore-sentinel-incident-tags%2Fazuredeploy.json)
+
+A Logic App that dynamically restores **any** tag that was stripped — it reads previous tags from the Activity Log and merges them back.
+
+| | |
+|---|---|
+| **Template** | [`remediation/restore-sentinel-incident-tags/azuredeploy.json`](remediation/restore-sentinel-incident-tags/azuredeploy.json) |
 | **Documentation** | 📖 **[Full Deployment Guide](remediation/restore-sentinel-incident-tags/README.md)** |
 | **Cost** | < $1/month (Logic App Consumption tier) |
+| **Protects** | **Any** tag dynamically (GET → merge → PUT pattern) |
+| **Limitation** | Requires Logic App + Managed Identity + RBAC setup |
+
+### Which should I choose?
+
+| Criteria | Automation Rule | Logic App |
+|----------|:-:|:-:|
+| I know exactly which tags to protect | ✅ | ✅ |
+| Tags change frequently / I can't predict them | ❌ | ✅ |
+| I want zero cost | ✅ | ❌ |
+| I want zero extra Azure resources | ✅ | ❌ |
+| I need dynamic tag restoration from Activity Log | ❌ | ✅ |
 
 ---
 

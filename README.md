@@ -171,7 +171,7 @@ Diagnoses whether the Security Copilot Phishing Triage Agent is stripping tags f
 
 ## 🔧 Remediation — Protect Sentinel Incident Tags
 
-The Phishing Triage Agent and Defender XDR alert correlation can strip tags/labels from Sentinel incidents, breaking tag-based automation. This happens because Sentinel's PUT API uses **full-replace semantics** — if the update payload omits the `labels` field, all existing tags are deleted.
+A bug in code is causing the Phishing Triage Agent to overwrite incident tags when it updates Sentinel incidents, breaking tag-based automation. The agent writes its own tags without preserving existing labels, so any customer-applied tags are stripped.
 
 ### Two-step approach
 

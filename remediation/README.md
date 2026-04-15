@@ -8,9 +8,7 @@ The **Security Copilot Phishing Triage Agent**, **Microsoft Defender XDR alert c
 
 ### Root Cause
 
-The Sentinel [`Incidents – Create Or Update`](https://learn.microsoft.com/en-us/rest/api/securityinsights/incidents/create-or-update) REST API uses **PUT (full-replace) semantics**. When any service updates an incident, the **entire** incident object is replaced. If the `labels` array is omitted or empty in the PUT body, **all existing labels are deleted**.
-
-This is **by-design API behavior**, not a bug in any agent. The updating service simply doesn't preserve fields it didn't set.
+A bug in code is causing incident tags to be overwritten. When the Phishing Triage Agent updates a Sentinel incident, it uses the [`Incidents – Create Or Update`](https://learn.microsoft.com/en-us/rest/api/securityinsights/incidents/create-or-update) REST API with **PUT (full-replace) semantics**. The agent writes its own tags (e.g., `Agent`, `Credential Phish`) without preserving existing labels — so any customer-applied tags are stripped from the incident.
 
 ### Who may be impacted?
 

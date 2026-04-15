@@ -248,8 +248,8 @@ If the tag was stripped, it gets re-added. Safe to run on every update.</p>
 <li>Only protects the <strong>specific tags</strong> you configured &mdash; not dynamic.</li>
 <li>Update rule fires on <strong>severity changes</strong>. If an update doesn't change severity,
 that specific update won't trigger tag restoration.</li>
-<li>For full dynamic tag restoration (any tag, any trigger), use the
-<a href="https://github.com/iamjoeycruz/securitycopilotindefender/tree/main/remediation/restore-sentinel-incident-tags" style="color:var(--blu)">Logic App approach</a>.</li>
+<li>For full dynamic tag restoration, use the
+<a href="https://github.com/iamjoeycruz/securitycopilotindefender/tree/main/scripts" style="color:var(--blu)">Diagnose &amp; Remediate script</a>.</li>
 </ul>
 </div>
 

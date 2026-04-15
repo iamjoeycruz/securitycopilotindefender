@@ -106,7 +106,8 @@ The wizard will:
 6. Ask which tags you want to protect (comma-separated)
 7. Deploy two automation rules
 8. Verify deployment and generate an HTML report
-<img width="2042" height="1400" alt="image" src="https://github.com/user-attachments/assets/9dc0f0c2-3a55-43e1-bff8-2f3ed8c1a0ee" />
+<img width="2702" height="1364" alt="image" src="https://github.com/user-attachments/assets/f0bcf0a2-2383-4cdd-9906-0f5763f47afa" />
+
 
 
 

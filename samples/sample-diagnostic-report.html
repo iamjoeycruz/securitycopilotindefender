@@ -130,13 +130,7 @@ The script will show each candidate and ask for admin approval before making cha
 <!-- ═══════ ROOT CAUSE ═══════ -->
 <h2 id="rootcause">&#128269; Why Are Tags Disappearing?</h2>
 <div class="rc">
-<strong>Root Cause:</strong> The Sentinel <code>Incidents &ndash; Create Or Update</code> API uses
-<strong>PUT (full-replace) semantics</strong>. When <em>any</em> service (including the Phishing Triage Agent)
-updates an incident, the entire incident object is replaced.  If the <code>labels</code>
-array is omitted or empty in the PUT body, <strong>all existing labels are deleted</strong>.<br/><br/>
-The Defender XDR <code>PATCH /api/incidents</code> endpoint behaves similarly &mdash; it <strong>overwrites</strong> the
-<code>tags</code> array rather than merging.  <strong>This is by-design API behavior, not a bug.</strong>
-The agent is not intentionally removing tags; it simply doesn&rsquo;t preserve fields it didn&rsquo;t set.
+<strong>Root Cause:</strong> There was a bug that was overwriting the tags.
 </div>
 
 <!-- ═══════ DETAILED FINDINGS ═══════ -->

@@ -171,7 +171,7 @@ Diagnoses whether the Security Copilot Phishing Triage Agent is stripping tags f
 
 ## 🔧 Remediation — Protect Sentinel Incident Tags
 
-A bug in code is causing the Phishing Triage Agent to overwrite incident tags when it updates Sentinel incidents, breaking tag-based automation. The agent writes its own tags without preserving existing labels, so any customer-applied tags are stripped.
+There was a bug that was overwriting the tags.
 
 ### Two-step approach
 

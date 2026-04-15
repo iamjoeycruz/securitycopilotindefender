@@ -8,7 +8,7 @@ The **Security Copilot Phishing Triage Agent**, **Microsoft Defender XDR alert c
 
 ### Root Cause
 
-A bug in code is causing incident tags to be overwritten. When the Phishing Triage Agent updates a Sentinel incident, it uses the [`Incidents – Create Or Update`](https://learn.microsoft.com/en-us/rest/api/securityinsights/incidents/create-or-update) REST API with **PUT (full-replace) semantics**. The agent writes its own tags (e.g., `Agent`, `Credential Phish`) without preserving existing labels — so any customer-applied tags are stripped from the incident.
+There was a bug that was overwriting the tags.
 
 ### Who may be impacted?
 

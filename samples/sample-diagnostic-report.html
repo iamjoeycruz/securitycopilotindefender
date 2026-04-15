@@ -1,7 +1,8 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
-<title>Phishing Triage Agent Diagnostic Report</title>
+<title>Phishing Triage Agent — Diagnose &amp; Remediate Report</title>
 <style>
-:root{--bg:#ffffff;--fg:#1e293b;--card:#f8fafc;--border:#e2e8f0;--red:#dc2626;--yel:#d97706;--grn:#059669;--blu:#2563eb;--purple:#7c3aed}
+:root{--bg:#ffffff;--fg:#1e293b;--card:#f8fafc;--border:#e2e8f0;
+--red:#dc2626;--yel:#d97706;--grn:#059669;--blu:#2563eb;--purple:#7c3aed}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--fg);padding:2rem;line-height:1.6;max-width:1200px;margin:0 auto}
 h1{color:var(--blu);font-size:1.6rem;margin-bottom:.3rem}
@@ -16,6 +17,9 @@ table{width:100%;border-collapse:collapse;margin:.8rem 0 1.2rem;font-size:.82rem
 th{background:#f1f5f9;color:var(--blu);text-align:left;padding:.45rem .6rem;border:1px solid var(--border)}
 td{padding:.35rem .6rem;border:1px solid var(--border);vertical-align:top}
 tr:nth-child(even) td{background:#f8fafc}
+tr.rem-success td{background:#f0fdf4}
+tr.rem-failed td{background:#fef2f2}
+tr.rem-skipped td{background:#f8fafc;color:#64748b}
 .badge{padding:2px 8px;border-radius:4px;font-weight:600;font-size:.72rem;text-transform:uppercase}
 .badge.critical{background:#fef2f2;color:var(--red)}.badge.warning{background:#fffbeb;color:var(--yel)}
 .badge.info{background:#eff6ff;color:var(--blu)}.badge.pass{background:#f0fdf4;color:var(--grn)}
@@ -45,51 +49,73 @@ ol.steps{margin:.5rem 0 0 1.2rem}ol.steps li{margin:.3rem 0}
 .toc-section{margin:.3rem 0}
 .disclaimer{background:#fffbeb;border:1px solid #d97706;border-radius:6px;padding:.8rem 1rem;margin:.8rem 0;font-size:.78rem;color:#92400e}
 .disclaimer strong{color:#b45309}
+.limitations{background:#f0f9ff;border:1px solid var(--blu);border-radius:8px;padding:1rem 1.2rem;margin:1rem 0}
+.limitations h3{color:var(--blu);margin:0 0 .5rem;font-size:.95rem}
+.limitations ul{margin:.3rem 0 0 1.2rem;font-size:.85rem;color:#334155}
+.limitations li{margin:.25rem 0}
+.scope-badge{display:inline-block;background:#f1f5f9;border:1px solid var(--border);border-radius:4px;padding:2px 10px;font-size:.82rem;color:#475569;margin-top:.3rem}
 </style></head><body>
 
-<h1>&#128270; Phishing Triage Agent &mdash; Tag Removal Diagnostic Report</h1>
-<p class="meta">2026-04-07 02:36:54 UTC &bull; Subscription <code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> &bull;
-Workspace <code>Contoso-SentinelWorkspace</code> &bull; Lookback: <strong>7 days</strong>
- &bull; Expected tags: <code>AutoEscalate, Tier2-Review</code></p>
+<h1>&#128270; Phishing Triage Agent &mdash; Diagnose &amp; Remediate Report</h1>
+<p class="meta">2026-04-15 03:32:22 UTC &bull; Subscription <code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> &bull;
+Workspace <code>Contoso-LogAnalyticsWorkspace</code> &bull; Lookback: <strong>30 days</strong>
+
+&bull; Mode: <strong>Diagnostic Only</strong></p>
 
 <div class="disclaimer">
 <strong>&#9888;&#65039; DISCLAIMER:</strong> This report and associated scripts are provided <strong>&ldquo;AS IS&rdquo;</strong>
 without warranty of any kind, express or implied. This is for <strong>educational and diagnostic
 purposes only</strong> and is NOT an officially supported Microsoft tool or product.
-The diagnostic script performed <strong>read-only</strong> operations against your Azure environment &mdash;
-no incidents, tags, or resources were modified. Always review scripts before running them.
-The authors assume no liability for any damage or disruption. Test in non-production environments first.
+The diagnostic script performed <strong>read-only</strong> operations against your Azure environment &mdash; no incidents, tags, or resources were modified.
+Always review scripts before running them. The authors assume no liability for any damage or disruption.
 </div>
 
 <!-- ═══════ VERDICT ═══════ -->
 <div class="verdict critical">&#10060; CONFIRMED — The Phishing Triage Agent is removing incident tags</div>
 
+<!-- ═══════ LIMITATIONS ═══════ -->
+<div class="limitations">
+<h3>&#9888;&#65039; Known Limitations</h3>
+<ul>
+<li><strong>Data Retention:</strong> SecurityIncident table governed by workspace retention (default 90 days). Azure Activity Log capped at 90 days. Tags removed before the retention window <strong>cannot be recovered</strong>.</li>
+<li><strong>Lookback Window:</strong> This report analyzed only the last <strong>30 day(s)</strong>. Actual affected incidents may exceed what is shown.</li>
+<li><strong>Agent Attribution:</strong> The agent is identified via <code>ModifiedBy</code> patterns (e.g., <code>SecurityCopilotAgent</code>, <code>Microsoft Defender XDR</code>). If Microsoft changes the agent identity string, detection may miss events.</li>
+<li><strong>Tag Restoration Scope:</strong> Only tags specifically removed by the agent are restored. Tags intentionally removed by human analysts are <strong>not</strong> re-added.</li>
+<li><strong>Concurrent Modifications:</strong> If an incident is modified between the diagnostic scan and remediation PUT, etag concurrency prevents blind overwrites. Conflicting writes trigger a retry, but rapid concurrent edits may still cause transient failures.</li>
+<li><strong>Closed Incidents:</strong> Closed incidents require classification fields in the PUT body. The script preserves them from a fresh GET, but changes between GET and PUT are not merged.</li>
+<li><strong>Pagination Caps:</strong> Incident scan: 10,000 max (50 pages). Remediation candidates: 500 per run. Re-run for additional incidents.</li>
+<li><strong>Sovereign Clouds:</strong> API endpoints and versions target Azure public cloud. Government/sovereign clouds may require manual URI adjustments.</li>
+<li><strong>Rate Limiting:</strong> The script includes retry with exponential backoff for HTTP 429/5xx, but large-scale remediation (500+ incidents) may still encounter throttling.</li>
+<li><strong>PUT Semantics:</strong> Sentinel uses full-replace PUT. The script round-trips all writable properties from a fresh GET, but read-only fields are stripped. Unrecognized new fields may not be preserved.</li>
+</ul>
+</div>
+
 <!-- ═══════ EXECUTIVE SUMMARY ═══════ -->
 <div class="exec-summary">
 <h2 style="margin-top:0;border:none;padding:0">&#128221; Executive Summary</h2>
-<p>This diagnostic <strong>confirms the customer's report</strong>. <strong>7</strong> phishing incidents currently have <strong>zero tags</strong>. KQL analysis found <strong>6 incidents</strong> that previously had tags but now have none. The top actor removing tags is <strong>Microsoft Defender XDR - alert correlation</strong> (64% of its updates strip tags). This is <strong>expected behavior</strong> caused by Sentinel's PUT API overwriting the labels array. See the <strong>Recommended Actions</strong> section below for fixes.</p>
+<p class="scope-badge">&#127919; Scoped to <strong>all phishing incidents</strong> in workspace</p>
+<p>This diagnostic <strong>confirms the customer's report</strong>. <strong>1 incident(s)</strong> need tag restoration (see table below). <strong>66</strong> phishing incidents currently have <strong>zero tags</strong>. KQL analysis found <strong>6 incidents</strong> that previously had tags but now have none. The top actor removing tags is <strong>John Doe (OPS)</strong> (12 tags stripped across 6 incident(s)). This is <strong>expected behavior</strong> caused by Sentinel's PUT API overwriting the labels array. Re-run this script without <code>-DiagnosticOnly</code> to restore the missing tags.</p>
 
-<div class="stats">
-<div class="stat"><div class="n">200</div><div class="l">Total Incidents Scanned</div></div>
-<div class="stat"><div class="n">152</div><div class="l">Phishing Related</div></div>
-<div class="stat"><div class="n" style="color:var(--grn)">145</div><div class="l">&#9989; Have Tags</div></div>
-<div class="stat"><div class="n" style="color:var(--red)">7</div><div class="l">&#10060; Tags Missing</div></div>
+<div class='stats'>
+<div class='stat'><div class='n'>204</div><div class='l'>Phishing Incidents</div></div>
+<div class='stat'><div class='n' style='color:var(--grn)'>138</div><div class='l'>&#9989; Have Tags</div></div>
+<div class='stat'><div class='n' style='color:var(--red)'>66</div><div class='l'>&#10060; Tags Missing</div></div>
 <div class='stat'><div class='n' style='color:var(--purple)'>6</div><div class='l'>&#128163; Tags Were Stripped (KQL)</div></div>
 </div>
 
-<h3 style='margin-top:1.2rem'>&#128373; Who is Removing Tags?</h3><table><thead><tr><th>Actor / Service</th><th>Total Updates</th><th>Updates That Stripped Tags</th><th>Tag Removal Rate</th><th>Incidents Affected</th></tr></thead><tbody><tr><td><strong>Microsoft Defender XDR - alert correlation</strong></td><td>86</td><td style='color:var(--red)'>55</td><td style='color:var(--red);font-weight:600'>64%</td><td>50</td></tr><tr><td><strong>Incident created from alert</strong></td><td>35</td><td style='color:var(--red)'>35</td><td style='color:var(--red);font-weight:600'>100%</td><td>34</td></tr><tr><td><strong>SOC Analyst (OPS)</strong></td><td>20</td><td style='color:var(--red)'>10</td><td style='color:var(--red);font-weight:600'>50%</td><td>8</td></tr><tr><td><strong>Microsoft XDR</strong></td><td>4</td><td style='color:var(--red)'>4</td><td style='color:var(--red);font-weight:600'>100%</td><td>4</td></tr></tbody></table>
+<h3 style='margin-top:1.2rem'>&#128163; Affected Incidents &mdash; Tags Need Fixing (1)</h3>
+<p style='color:#64748b;font-size:.85rem;margin-bottom:.5rem'>These are the specific incidents where tags were stripped and need restoration.</p>
+<table><thead><tr><th>Incident #</th><th>Title</th><th>Current Tags</th><th>Tags Missing</th><th>Tags After Fix</th><th>Last Modified By</th></tr></thead><tbody><tr><td><strong>100001</strong></td><td>Email reported by user as malware or phish</td><td>Agent, Credential Phish</td><td style='color:var(--red);font-weight:600'>CustomTag</td><td style='color:var(--grn);font-weight:600'>Agent, Credential Phish, CustomTag</td><td style='font-size:.78rem'>SecurityCopilotAgentUser-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@contoso.onmicrosoft.com</td></tr></tbody></table>
 
-<h3 style='margin-top:1.2rem'>&#128163; Incidents With Tags Stripped (Confirmed by KQL)</h3>
-<p style='color:#64748b;font-size:.85rem;margin-bottom:.5rem'>These incidents <strong>had tags</strong> at some point but currently have <strong>zero tags</strong>. This is your evidence that tag stripping is occurring.</p>
-<table><thead><tr><th>Incident #</th><th>Title</th><th>Tags At Peak</th><th>Tags Now</th><th>Updates</th><th>Last Modified</th></tr></thead><tbody><tr><td><strong>376494</strong></td><td>DIAG-TEST Submission - possible phish link</td><td style='color:var(--grn)'>2</td><td style='color:var(--red);font-weight:700'>0</td><td>3</td><td style='font-size:.78rem'>2026-04-07T01:09:45.178162Z</td></tr><tr><td><strong>376493</strong></td><td>DIAG-TEST User reported phishing — credential harvest</td><td style='color:var(--grn)'>2</td><td style='color:var(--red);font-weight:700'>0</td><td>3</td><td style='font-size:.78rem'>2026-04-07T01:09:44.3712078Z</td></tr><tr><td><strong>376490</strong></td><td>DIAG-TEST Submission - possible phish link</td><td style='color:var(--grn)'>2</td><td style='color:var(--red);font-weight:700'>0</td><td>3</td><td style='font-size:.78rem'>2026-04-07T00:57:13.6630441Z</td></tr><tr><td><strong>376489</strong></td><td>DIAG-TEST User reported phishing — credential harvest</td><td style='color:var(--grn)'>2</td><td style='color:var(--red);font-weight:700'>0</td><td>3</td><td style='font-size:.78rem'>2026-04-07T00:57:12.8764832Z</td></tr><tr><td><strong>376454</strong></td><td>DIAG-TEST Submission - possible phish link</td><td style='color:var(--grn)'>2</td><td style='color:var(--red);font-weight:700'>0</td><td>2</td><td style='font-size:.78rem'>2026-04-07T00:29:11.4686024Z</td></tr><tr><td><strong>376453</strong></td><td>DIAG-TEST User reported phishing — credential harvest</td><td style='color:var(--grn)'>2</td><td style='color:var(--red);font-weight:700'>0</td><td>2</td><td style='font-size:.78rem'>2026-04-07T00:29:10.0789812Z</td></tr></tbody></table>
+<h3 style='margin-top:1.2rem'>&#128373; Who is Removing Tags?</h3><table><thead><tr><th>Actor / Service</th><th>Updates That Removed Tags</th><th>Tags Stripped</th><th>Incidents Affected</th><th>Sample Removed Tags</th></tr></thead><tbody><tr><td><strong>John Doe (OPS)</strong></td><td>6</td><td style='color:var(--red)'>12</td><td>6</td><td style='font-size:0.85em'>[&quot;AutoRemediate&quot;,&quot;PhishingReview&quot;]</td></tr><tr><td><strong>Microsoft Defender XDR - alert correlation</strong></td><td>6</td><td style='color:var(--red)'>11</td><td>6</td><td style='font-size:0.85em'>[&quot;Agent&quot;,&quot;CustomTag&quot;,&quot;Credential Phish&quot;]</td></tr><tr><td><strong>SecurityCopilotAgentUser-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@contoso.onmicrosoft.com</strong></td><td>2</td><td style='color:var(--red)'>2</td><td>2</td><td style='font-size:0.85em'>[&quot;CustomTag&quot;]</td></tr></tbody></table>
 </div>
 
 <!-- ═══════ QUICK ACTION ═══════ -->
 <div class="quick-action">
 <div class="icon">&#9889;</div>
 <div class="text">
-<strong>Fastest Fix:</strong> Deploy a tag-restoration Automation Rule (see <a href="#fix" style="color:var(--blu)">Step 1 below</a>).
-This auto-heals stripped tags within seconds and requires no changes to your existing automation.
+<strong>1 incident(s) need tag restoration.</strong> Re-run this script without <code>-DiagnosticOnly</code> to fix.
+The script will show each candidate and ask for admin approval before making changes.
 </div>
 </div>
 
@@ -98,8 +124,7 @@ This auto-heals stripped tags within seconds and requires no changes to your exi
 <a href="#rootcause">&#128269; Root Cause</a>
 <a href="#findings">&#9888;&#65039; Findings</a>
 <a href="#kql">&#128270; KQL Evidence</a>
-<a href="#fix">&#9989; How to Fix</a>
-<a href="#playbook">&#128736;&#65039; Deploy Fix</a>
+<a href="#remediation">&#128295; Remediation</a>
 </div>
 
 <!-- ═══════ ROOT CAUSE ═══════ -->
@@ -117,210 +142,114 @@ The agent is not intentionally removing tags; it simply doesn&rsquo;t preserve f
 <!-- ═══════ DETAILED FINDINGS ═══════ -->
 <h2 id="findings">&#9888;&#65039; Diagnostic Findings</h2>
 <table><thead><tr><th style="width:90px">Severity</th><th>Finding</th><th>Detail</th></tr></thead>
-<tbody><tr><td><span class='badge info'>INFO</span></td><td>No agent-identity writes found in Activity Log</td><td>Agent may use a different identity — KQL will check further.</td></tr>
-<tr><td><span class='badge critical'>CRITICAL</span></td><td>7 phishing incidents have NO tags (4.6%)</td><td>These won&#39;t trigger tag-based automation.</td></tr>
-<tr><td><span class='badge critical'>CRITICAL</span></td><td>30 incidents missing expected tags (AutoEscalate, Tier2-Review)</td><td>Automation depending on these tags will not fire.</td></tr>
+<tbody><tr><td><span class='badge critical'>CRITICAL</span></td><td>66 phishing incidents have NO tags (32.4%)</td><td>These won&#39;t trigger tag-based automation.</td></tr>
 <tr><td><span class='badge critical'>CRITICAL</span></td><td>KQL: 6 incidents had tags removed</td><td>Tags existed earlier but are now gone.</td></tr>
-<tr><td><span class='badge warning'>WARNING</span></td><td>&#39;Microsoft Defender XDR - alert correlation&#39; left 55 incidents tagless</td><td>86 total updates, 64% resulted in no tags.</td></tr>
-<tr><td><span class='badge warning'>WARNING</span></td><td>&#39;Incident created from alert&#39; left 35 incidents tagless</td><td>35 total updates, 100% resulted in no tags.</td></tr>
-<tr><td><span class='badge warning'>WARNING</span></td><td>&#39;SOC Analyst (OPS)&#39; left 10 incidents tagless</td><td>20 total updates, 50% resulted in no tags.</td></tr>
-<tr><td><span class='badge warning'>WARNING</span></td><td>&#39;Microsoft XDR&#39; left 4 incidents tagless</td><td>4 total updates, 100% resulted in no tags.</td></tr></tbody></table>
+<tr><td><span class='badge warning'>WARNING</span></td><td>&#39;John Doe (OPS)&#39; removed tags from 6 incident(s)</td><td>6 update(s) stripped 12 tag(s) total.</td></tr>
+<tr><td><span class='badge warning'>WARNING</span></td><td>&#39;Microsoft Defender XDR - alert correlation&#39; removed tags from 6 incident(s)</td><td>6 update(s) stripped 11 tag(s) total.</td></tr>
+<tr><td><span class='badge warning'>WARNING</span></td><td>&#39;SecurityCopilotAgentUser-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@contoso.onmicrosoft.com&#39; removed tags from 2 incident(s)</td><td>2 update(s) stripped 2 tag(s) total.</td></tr></tbody></table>
 
-<details><summary>&#127991;&#65039; Tag Distribution (which tags exist on phishing incidents)</summary><table><thead><tr><th>Name</th><th>Count</th></tr></thead><tbody><tr><td>Redirected</td><td>145</td></tr></tbody></table></details>
+<details><summary>&#127991;&#65039; Tag Distribution (which tags exist on phishing incidents)</summary><table><thead><tr><th>Name</th><th>Count</th></tr></thead><tbody><tr><td>Redirected</td><td>129</td></tr><tr><td>Agent</td><td>8</td></tr><tr><td>CustomTag</td><td>6</td></tr><tr><td>Credential Phish</td><td>5</td></tr><tr><td>AutoRemediate</td><td>2</td></tr><tr><td>PhishingReview</td><td>2</td></tr></tbody></table></details>
 
-<details open><summary>&#127991;&#65039; Incidents Missing Expected Tags &mdash; 30 incident(s) lack <code>AutoEscalate, Tier2-Review</code></summary><table><thead><tr><th>IncidentNumber</th><th>Title</th><th>CurrentTags</th><th>Status</th><th>LastModifiedTimeUtc</th></tr></thead><tbody><tr><td>376507</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 02:33:03</td></tr><tr><td>376505</td><td>Email reported by user as malware or phish</td><td>(none)</td><td>New</td><td>04/07/2026 01:47:23</td></tr><tr><td>376487</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:49</td></tr><tr><td>376485</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:47</td></tr><tr><td>376486</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:47</td></tr><tr><td>376480</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:48</td></tr><tr><td>376482</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>(none)</td><td>New</td><td>04/07/2026 00:50:49</td></tr><tr><td>376484</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:48</td></tr><tr><td>376481</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:45</td></tr><tr><td>376483</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:48</td></tr><tr><td>376479</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:44</td></tr><tr><td>376478</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:48</td></tr><tr><td>376477</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:44</td></tr><tr><td>376476</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:47</td></tr><tr><td>376475</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:48</td></tr><tr><td>376474</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:47</td></tr><tr><td>376473</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:47</td></tr><tr><td>376472</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:44</td></tr><tr><td>376471</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:48</td></tr><tr><td>376470</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:48</td></tr><tr><td>376469</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:47</td></tr><tr><td>376468</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:47</td></tr><tr><td>376466</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:44</td></tr><tr><td>376465</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:48</td></tr><tr><td>376464</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:48</td></tr><tr><td>376463</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:50:44</td></tr><tr><td>376462</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:48:41</td></tr><tr><td>376461</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:48:38</td></tr><tr><td>376460</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:48:37</td></tr><tr><td>376459</td><td>Suspicious phishing email with malicious URL delivered ...</td><td>Redirected</td><td>Closed</td><td>04/07/2026 00:48:37</td></tr></tbody></table></details>
 
-<!-- ═══════ ACTIVITY LOG ═══════ -->
-<details>
-<summary>&#128220; Activity Log &mdash; Agent Writes (Total: 0 | Agent: 0)</summary>
-<p class='empty'><strong>Note:</strong> The Activity Log may show 0 writes if the agent uses internal service identities that are not tracked in the Azure Activity Log. The KQL analysis above is the more reliable data source for detecting tag removal.</p>
-<p class='empty'>No data collected.</p>
-</details>
+
+<!-- ═══════ ACTIVITY LOG (only if results) ═══════ -->
+
 
 <!-- ═══════ KQL EVIDENCE ═══════ -->
 <h2 id="kql">&#128270; KQL Evidence (Deep-Dive)</h2>
 <p style="color:#64748b;font-size:.85rem;margin-bottom:.5rem">
 These queries ran against your Log Analytics workspace. Expand any query to copy it into <strong>Sentinel &rarr; Logs</strong> for further investigation.
+Only sections with results are shown.
 </p>
 <div class='kql'><h3>Tags Vanished <span class='count'>(6 rows)</span></h3><details><summary>Show KQL query (copy to Sentinel &rarr; Logs)</summary><pre><code>SecurityIncident
-| where TimeGenerated &gt;= ago(7d)
+| where TimeGenerated &gt;= ago(30d)
 | where Title has_any (&quot;phish&quot;,&quot;user reported&quot;,&quot;submission&quot;) or Classification has &quot;phish&quot;
-| extend LabelCount = array_length(Labels), LabelsJson = tostring(Labels)
+| extend LabelCount = coalesce(array_length(Labels), 0), LabelsJson = tostring(Labels)
 | summarize FirstTime=min(TimeGenerated), LastTime=max(TimeGenerated),
             Updates=count(), MaxLabels=max(LabelCount)
     by IncidentNumber, Title
 | join kind=inner (
     SecurityIncident
-    | where TimeGenerated &gt;= ago(7d)
+    | where TimeGenerated &gt;= ago(30d)
     | summarize arg_max(TimeGenerated, Labels) by IncidentNumber
-    | extend LastLabelCnt = array_length(Labels), LastLabels = tostring(Labels)
+    | extend LastLabelCnt = coalesce(array_length(Labels), 0), LastLabels = tostring(Labels)
 ) on IncidentNumber
 | where MaxLabels &gt; 0 and LastLabelCnt == 0
 | project IncidentNumber, Title, FirstTime, LastTime, Updates,
           TagsAtPeak=MaxLabels, TagsNow=LastLabelCnt
-| order by LastTime desc</code></pre></details><table><thead><tr><th>IncidentNumber</th><th>Title</th><th>FirstTime</th><th>LastTime</th><th>Updates</th><th>TagsAtPeak</th><th>TagsNow</th></tr></thead><tbody><tr><td>376494</td><td>DIAG-TEST Submission - possible phish link</td><td>2026-04-07T01:08:23.3137053Z</td><td>2026-04-07T01:09:45.178162Z</td><td>3</td><td>2</td><td>0</td></tr><tr><td>376493</td><td>DIAG-TEST User reported phishing — credential harvest</td><td>2026-04-07T01:08:22.4730936Z</td><td>2026-04-07T01:09:44.3712078Z</td><td>3</td><td>2</td><td>0</td></tr><tr><td>376490</td><td>DIAG-TEST Submission - possible phish link</td><td>2026-04-07T00:55:59.7086662Z</td><td>2026-04-07T00:57:13.6630441Z</td><td>3</td><td>2</td><td>0</td></tr><tr><td>376489</td><td>DIAG-TEST User reported phishing — credential harvest</td><td>2026-04-07T00:55:59.1647286Z</td><td>2026-04-07T00:57:12.8764832Z</td><td>3</td><td>2</td><td>0</td></tr><tr><td>376454</td><td>DIAG-TEST Submission - possible phish link</td><td>2026-04-07T00:28:50.9626339Z</td><td>2026-04-07T00:29:11.4686024Z</td><td>2</td><td>2</td><td>0</td></tr><tr><td>376453</td><td>DIAG-TEST User reported phishing — credential harvest</td><td>2026-04-07T00:28:50.0579815Z</td><td>2026-04-07T00:29:10.0789812Z</td><td>2</td><td>2</td><td>0</td></tr></tbody></table></div>
-<div class='kql'><h3>Who Removed Tags <span class='count'>(5 rows)</span></h3><details><summary>Show KQL query (copy to Sentinel &rarr; Logs)</summary><pre><code>SecurityIncident
-| where TimeGenerated &gt;= ago(7d)
+| order by LastTime desc</code></pre></details><table><thead><tr><th>IncidentNumber</th><th>Title</th><th>FirstTime</th><th>LastTime</th><th>Updates</th><th>TagsAtPeak</th><th>TagsNow</th></tr></thead><tbody><tr><td>376494</td><td>DIAG-TEST Submission - possible phish link</td><td>2026-04-07T01:08:23.3137053Z</td><td>2026-04-07T01:09:45.178162Z</td><td>3</td><td>2</td><td>0</td></tr><tr><td>100014</td><td>DIAG-TEST User reported phishing — credential harvest</td><td>2026-04-07T01:08:22.4730936Z</td><td>2026-04-07T01:09:44.3712078Z</td><td>3</td><td>2</td><td>0</td></tr><tr><td>100013</td><td>DIAG-TEST Submission - possible phish link</td><td>2026-04-07T00:55:59.7086662Z</td><td>2026-04-07T00:57:13.6630441Z</td><td>3</td><td>2</td><td>0</td></tr><tr><td>100012</td><td>DIAG-TEST User reported phishing — credential harvest</td><td>2026-04-07T00:55:59.1647286Z</td><td>2026-04-07T00:57:12.8764832Z</td><td>3</td><td>2</td><td>0</td></tr><tr><td>100011</td><td>DIAG-TEST Submission - possible phish link</td><td>2026-04-07T00:28:50.9626339Z</td><td>2026-04-07T00:29:11.4686024Z</td><td>2</td><td>2</td><td>0</td></tr><tr><td>100010</td><td>DIAG-TEST User reported phishing — credential harvest</td><td>2026-04-07T00:28:50.0579815Z</td><td>2026-04-07T00:29:10.0789812Z</td><td>2</td><td>2</td><td>0</td></tr></tbody></table></div>
+<div class='kql'><h3>Who Removed Tags <span class='count'>(3 rows)</span></h3><details><summary>Show KQL query (copy to Sentinel &rarr; Logs)</summary><pre><code>SecurityIncident
+| where TimeGenerated &gt;= ago(30d)
 | where Title has_any (&quot;phish&quot;,&quot;user reported&quot;,&quot;submission&quot;) or Classification has &quot;phish&quot;
-| extend LabelCount = array_length(Labels)
-| where isnotempty(ModifiedBy)
-| summarize TotalUpdates=count(), NoTagUpdates=countif(LabelCount==0),
-            WithTagUpdates=countif(LabelCount&gt;0), Incidents=dcount(IncidentNumber),
-            SampleIds=make_set(IncidentNumber,5) by ModifiedBy
-| extend TagRemovalPct = round(100.0 * NoTagUpdates / TotalUpdates, 1)
-| order by NoTagUpdates desc</code></pre></details><table><thead><tr><th>ModifiedBy</th><th>TotalUpdates</th><th>NoTagUpdates</th><th>WithTagUpdates</th><th>Incidents</th><th>SampleIds</th><th>TagRemovalPct</th></tr></thead><tbody><tr><td>Microsoft Defender XDR - alert correlation</td><td>86</td><td>55</td><td>31</td><td>50</td><td>[376344,372421,372741,371121,372195]</td><td>64</td></tr><tr><td>Incident created from alert</td><td>35</td><td>35</td><td>0</td><td>34</td><td>[376505,372638,372741,372195,373185]</td><td>100</td></tr><tr><td>SOC Analyst (OPS)</td><td>20</td><td>10</td><td>10</td><td>8</td><td>[376451,376450,376453,376454,376493]</td><td>50</td></tr><tr><td>Microsoft XDR</td><td>4</td><td>4</td><td>0</td><td>4</td><td>[372166,373501,375414,374768]</td><td>100</td></tr><tr><td>SecurityCopilotAgentUser-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@contoso.com</td><td>2</td><td>0</td><td>2</td><td>1</td><td>[370454]</td><td>0</td></tr></tbody></table></div>
-<div class='kql'><h3>Agent Correlation <span class='count'>(0 rows)</span></h3><details><summary>Show KQL query (copy to Sentinel &rarr; Logs)</summary><pre><code>let Phish = SecurityIncident
-| where TimeGenerated &gt;= ago(7d)
+| extend LabelNames = extract_all(@&#39;&quot;labelName&quot;\s*:\s*&quot;([^&quot;]+)&quot;&#39;, tostring(Labels))
+| extend LabelCount = array_length(LabelNames)
+| sort by IncidentNumber asc, TimeGenerated asc, ingestion_time() asc
+| serialize
+| extend PrevLabels = prev(LabelNames), PrevIncident = prev(IncidentNumber)
+| where IncidentNumber == PrevIncident
+| extend RemovedTags = set_difference(PrevLabels, LabelNames)
+| extend RemovedCount = array_length(RemovedTags)
+| where RemovedCount &gt; 0
+| summarize TotalUpdates=count(), TagsRemoved=sum(RemovedCount),
+            Incidents=dcount(IncidentNumber),
+            SampleIds=make_set(IncidentNumber,5),
+            SampleRemoved=make_set(RemovedTags,5) by ModifiedBy
+| order by TagsRemoved desc</code></pre></details><table><thead><tr><th>ModifiedBy</th><th>TotalUpdates</th><th>TagsRemoved</th><th>Incidents</th><th>SampleIds</th><th>SampleRemoved</th></tr></thead><tbody><tr><td>John Doe (OPS)</td><td>6</td><td>12</td><td>6</td><td>[100010,100011,100012,100013,100014]</td><td>[&quot;AutoRemediate&quot;,&quot;PhishingReview&quot;]</td></tr><tr><td>Microsoft Defender XDR - alert correlation</td><td>6</td><td>11</td><td>6</td><td>[100020,100021,100022,100002,100023]</td><td>[&quot;Agent&quot;,&quot;CustomTag&quot;,&quot;Credential Phish&quot;]</td></tr><tr><td>SecurityCopilotAgentUser-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@contoso.onmicrosoft.com</td><td>2</td><td>2</td><td>2</td><td>[100002,100001]</td><td>[&quot;CustomTag&quot;]</td></tr></tbody></table></div>
+<div class='kql'><h3>Change Timeline <span class='count'>(520 rows)</span></h3><details><summary>Show KQL query (copy to Sentinel &rarr; Logs)</summary><pre><code>SecurityIncident
+| where TimeGenerated &gt;= ago(30d)
 | where Title has_any (&quot;phish&quot;,&quot;user reported&quot;,&quot;submission&quot;) or Classification has &quot;phish&quot;
-| extend LabelCount = array_length(Labels), LabelsJson = tostring(Labels);
-let HadTags = Phish | where LabelCount &gt; 0
-| summarize When=min(TimeGenerated), Tags=take_any(LabelsJson), Cnt=take_any(LabelCount) by IncidentNumber;
-let LostTags = Phish | where LabelCount == 0
-| where ModifiedBy has_any (&quot;Copilot&quot;,&quot;Security Copilot&quot;,&quot;Threat Protection&quot;,&quot;SecurityInsights&quot;,&quot;MTP&quot;,&quot;WindowsDefenderATP&quot;)
-| summarize StrippedAt=min(TimeGenerated), Actor=take_any(ModifiedBy) by IncidentNumber;
-HadTags | join kind=inner LostTags on IncidentNumber
-| project IncidentNumber, OriginalTags=Tags, OriginalCount=Cnt, StrippedAt, Actor
-| order by StrippedAt desc</code></pre></details><p class='empty'>No data collected.</p></div>
-<div class='kql'><h3>Change Timeline <span class='count'>(147 rows)</span></h3><details><summary>Show KQL query (copy to Sentinel &rarr; Logs)</summary><pre><code>SecurityIncident
-| where TimeGenerated &gt;= ago(7d)
-| where Title has_any (&quot;phish&quot;,&quot;user reported&quot;,&quot;submission&quot;) or Classification has &quot;phish&quot;
-| extend LabelCount = array_length(Labels), LabelsJson = tostring(Labels)
+| extend LabelCount = coalesce(array_length(Labels), 0), LabelsJson = tostring(Labels)
 | project TimeGenerated, IncidentNumber, Title, Status, ModifiedBy, LabelCount, LabelsJson
-| order by IncidentNumber asc, TimeGenerated asc</code></pre></details><table><thead><tr><th>TimeGenerated</th><th>IncidentNumber</th><th>Title</th><th>Status</th><th>ModifiedBy</th><th>LabelCount</th><th>LabelsJson</th></tr></thead><tbody><tr><td>2026-03-31T05:31:49.5647819Z</td><td>362293</td><td>Email reported by user as malware or phish</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T20:12:43.8464999Z</td><td>362293</td><td>Email reported by user as malware or phish</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T04:47:08.4Z</td><td>369701</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T05:31:47.2855576Z</td><td>369701</td><td>Email reported by user as malware or phish</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-03-31T06:36:40.5063415Z</td><td>369724</td><td>Multi-stage incident involving Credential access &amp; Discovery involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T06:43:48.5216302Z</td><td>369724</td><td>Multi-stage incident involving Credential access &amp; Discovery involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T15:24:02.4175178Z</td><td>369724</td><td>Multi-stage incident involving Credential access &amp; Discovery involving one user reported by multiple sources</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-03-31T09:47:10.03Z</td><td>369927</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T20:12:42.0066557Z</td><td>369927</td><td>Email reported by user as malware or phish</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-03-31T14:47:11.09Z</td><td>370182</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T20:12:41.6696629Z</td><td>370182</td><td>Email reported by user as malware or phish</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-03-31T19:32:35.0258312Z</td><td>370327</td><td>Persistence incident involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T20:23:07.060201Z</td><td>370328</td><td>Initial access incident involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T19:47:02.6133333Z</td><td>370334</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T20:12:42.0098363Z</td><td>370334</td><td>Email reported by user as malware or phish</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-03-31T21:29:25.1202792Z</td><td>370454</td><td>Multi-stage incident involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T21:31:38.9715373Z</td><td>370454</td><td>Multi-stage incident involving Initial access &amp; Collection involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-03-31T21:32:16.0388293Z</td><td>370454</td><td>Multi-stage incident involving Initial access &amp; Collection involving one user reported by multiple sources</td><td>New</td><td>SecurityCopilotAgentUser-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@contoso.com</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Agent&quot;,&quot;labelType&quot;:&quot;User&quot;}]</td></tr><tr><td>2026-03-31T21:35:27.6021619Z</td><td>370454</td><td>Multi-stage incident involving Initial access &amp; Collection involving one user reported by multiple sources</td><td>New</td><td>SecurityCopilotAgentUser-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@contoso.com</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Agent&quot;,&quot;labelType&quot;:&quot;User&quot;}]</td></tr><tr><td>2026-03-31T21:35:55.2900147Z</td><td>370454</td><td>Multi-stage incident involving Initial access &amp; Collection involving one user reported by multiple sources</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-04-01T00:46:55.6133333Z</td><td>370699</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-04-01T05:46:59.0666667Z</td><td>371017</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-04-01T10:47:01.6033333Z</td><td>371121</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T07:14:44.0313237Z</td><td>371121</td><td>Email reported by user as malware or phish</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T22:17:52.581246Z</td><td>371121</td><td>Email reported by user as malware or phish</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-03T03:05:04.1747502Z</td><td>371121</td><td>Email reported by user as malware or phish</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-03T18:31:35.7373967Z</td><td>371121</td><td>Email reported by user as malware or phish</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-03T23:30:31.8826264Z</td><td>371121</td><td>Email reported by user as malware or phish</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-01T12:26:28.3819272Z</td><td>371184</td><td>Multi-stage incident involving Initial access &amp; Credential access involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-01T13:25:16.3435482Z</td><td>371184</td><td>Multi-stage incident involving Initial access &amp; Credential access involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-01T14:26:38.0244145Z</td><td>371184</td><td>Multi-stage incident involving Initial access &amp; Credential access involving one user reported by multiple sources</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-04-01T15:47:07.7566667Z</td><td>371281</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T07:14:45.6340329Z</td><td>371281</td><td>Email reported by user as malware or phish</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-04-01T20:46:59.2133333Z</td><td>371606</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T07:14:45.6351803Z</td><td>371606</td><td>Email reported by user as malware or phish</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-04-02T01:46:57.1966667Z</td><td>371796</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T07:14:45.9168539Z</td><td>371796</td><td>Email reported by user as malware or phish</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-04-02T06:46:53.5033333Z</td><td>372047</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T07:14:45.9199659Z</td><td>372047</td><td>Email reported by user as malware or phish</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-04-02T11:59:00.3619299Z</td><td>372161</td><td>Credential access incident involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T12:43:22.2268814Z</td><td>372166</td><td>Multi-stage incident involving Initial access &amp; Credential access involving one user reported by multiple sources</td><td>New</td><td>Microsoft XDR</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T13:25:27.4772712Z</td><td>372166</td><td>Multi-stage incident involving Initial access &amp; Credential access involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T14:25:36.4069387Z</td><td>372166</td><td>Multi-stage incident involving Initial access &amp; Credential access involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T15:25:24.0127262Z</td><td>372166</td><td>Multi-stage incident involving Initial access &amp; Credential access involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T15:26:01.1394817Z</td><td>372166</td><td>Multi-stage incident involving Initial access &amp; Credential access involving one user reported by multiple sources</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-04-02T11:46:56.1Z</td><td>372195</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T22:17:52.0304029Z</td><td>372195</td><td>Email reported by user as malware or phish</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-04-02T16:47:02.2433333Z</td><td>372421</td><td>Email reported by user as malware or phish</td><td>New</td><td>Incident created from alert</td><td>0</td><td>[]</td></tr><tr><td>2026-04-02T22:17:52.0355463Z</td><td>372421</td><td>Email reported by user as malware or phish</td><td>Closed</td><td>Microsoft Defender XDR - alert correlation</td><td>1</td><td>[{&quot;labelName&quot;:&quot;Redirected&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td></tr><tr><td>2026-04-02T22:25:16.4756098Z</td><td>372634</td><td>Multi-stage incident involving Initial access &amp; Credential access involving one user reported by multiple sources</td><td>New</td><td>Microsoft Defender XDR - alert correlation</td><td>0</td><td>[]</td></tr></tbody></table></div>
+| order by IncidentNumber asc, TimeGenerated asc</code></pre></details><p style='color:#64748b;font-size:.85rem;margin:.5rem 0'>Run this query in <strong>Sentinel &rarr; Logs</strong> to see the full change timeline. Data table omitted from report to reduce noise.</p></div>
+<div class='kql'><h3>Tag History Per Incident <span class='count'>(1 rows)</span></h3><details><summary>Show KQL query (copy to Sentinel &rarr; Logs)</summary><pre><code>SecurityIncident
+| where TimeGenerated &gt;= ago(30d)
+| where Title has_any (&quot;phish&quot;,&quot;user reported&quot;,&quot;submission&quot;) or Classification has &quot;phish&quot;
+| extend LabelNames = extract_all(@&#39;&quot;labelName&quot;\s*:\s*&quot;([^&quot;]+)&quot;&#39;, tostring(Labels))
+| sort by IncidentNumber asc, TimeGenerated asc, ingestion_time() asc
+| serialize
+| extend PrevLabels = prev(LabelNames), PrevIncident = prev(IncidentNumber)
+| where IncidentNumber == PrevIncident
+| extend RemovedTags = set_difference(PrevLabels, LabelNames)
+| where array_length(RemovedTags) &gt; 0
+| where ModifiedBy contains &quot;Copilot&quot; or ModifiedBy contains &quot;SecurityCopilotAgent&quot; or ModifiedBy contains &quot;MTP&quot; or ModifiedBy contains &quot;Threat Protection&quot; or ModifiedBy contains &quot;WindowsDefenderATP&quot; or ModifiedBy contains &quot;Microsoft Defender XDR&quot; or ModifiedBy contains &quot;Incident created from alert&quot; or ModifiedBy contains &quot;Microsoft XDR&quot;
+| summarize AgentRemovedTags = make_set(RemovedTags),
+            RemovalCount = count(),
+            LastRemoval = max(TimeGenerated),
+            Actors = make_set(ModifiedBy)
+    by IncidentNumber
+| join kind=inner (
+    SecurityIncident
+    | where TimeGenerated &gt;= ago(30d)
+    | summarize arg_max(TimeGenerated, Labels, ModifiedBy, Status, Title) by IncidentNumber
+    | extend CurrentLabels = tostring(Labels), CurrentLabelCount = coalesce(array_length(Labels), 0)
+    | extend CurrentTagNames = iff(CurrentLabelCount &gt; 0,
+        extract_all(@&#39;&quot;labelName&quot;\s*:\s*&quot;([^&quot;]+)&quot;&#39;, tostring(Labels)),
+        dynamic([]))
+) on IncidentNumber
+| extend MissingTags = set_difference(AgentRemovedTags, CurrentTagNames)
+| where array_length(MissingTags) &gt; 0
+| project IncidentNumber, Title, AgentRemovedTags, MissingTags, CurrentLabels, CurrentLabelCount,
+          LastModifiedBy = ModifiedBy, Status, RemovalCount, Actors
+| order by IncidentNumber desc
+| take 500</code></pre></details><table><thead><tr><th>IncidentNumber</th><th>Title</th><th>AgentRemovedTags</th><th>MissingTags</th><th>CurrentLabels</th><th>CurrentLabelCount</th><th>LastModifiedBy</th><th>Status</th><th>RemovalCount</th><th>Actors</th></tr></thead><tbody><tr><td>100001</td><td>Email reported by user as malware or phish</td><td>[&quot;CustomTag&quot;]</td><td>[&quot;CustomTag&quot;]</td><td>[{&quot;labelName&quot;:&quot;Agent&quot;,&quot;labelType&quot;:&quot;User&quot;},{&quot;labelName&quot;:&quot;Credential Phish&quot;,&quot;labelType&quot;:&quot;AutoAssigned&quot;}]</td><td>2</td><td>SecurityCopilotAgentUser-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@contoso.onmicrosoft.com</td><td>New</td><td>1</td><td>[&quot;SecurityCopilotAgentUser-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@contoso.onmicrosoft.com&quot;]</td></tr></tbody></table></div>
 
-<!-- ═══════ HOW TO FIX ═══════ -->
-<h2 id="fix">&#9989; Recommended Actions</h2>
+<!-- ═══════ REMEDIATION RESULTS ═══════ -->
+<h2 id="remediation">&#128295; Remediation Summary</h2>
 <div class="card">
-
-<p style="color:#64748b;margin-bottom:1rem">Listed in order of effectiveness. Action 1 alone will resolve the immediate issue.</p>
-
-<div class="rec"><span class="num-circle">1</span><div>
-<strong>Deploy a Tag-Restoration Automation Rule (Immediate Fix)</strong><br/>
-Create an Automation Rule in <em>Sentinel &rarr; Automation</em> that triggers on <strong>Incident Updated</strong> and runs a Logic App / Playbook:
-<ol class="steps">
-<li><strong>GET</strong> the incident to read current labels.</li>
-<li><strong>Compare</strong> against your required tags (e.g., <code>AutoRemediate</code>, <code>PhishingReview</code>).</li>
-<li>If any are missing, <strong>PUT</strong> the incident back with the full merged label set.</li>
-</ol>
-This auto-heals tags <strong>within seconds</strong> of removal. See the <a href="#playbook" style="color:var(--blu)">sample playbook</a> below.
-</div></div>
-
-<div class="rec"><span class="num-circle">2</span><div>
-<strong>Re-prioritize Automation Rules</strong><br/>
-In <em>Sentinel &rarr; Automation</em>, give your tag-dependent rules a <strong>lower priority number</strong>
-(= higher priority) so they execute <strong>before</strong> the Phishing Triage Agent runs.
-This ensures your automation reads tags before they get stripped.
-</div></div>
-
-<div class="rec"><span class="num-circle">3</span><div>
-<strong>Move Automation Triggers to Immutable Properties</strong><br/>
-Tags are fragile because any PUT can overwrite them. More reliable trigger options:
-<ul style="margin:.4rem 0 0 1.2rem">
-<li><strong>Incident classification / determination</strong> &mdash; set by the agent, never cleared.</li>
-<li><strong>Alert product name</strong> &mdash; immutable after creation.</li>
-<li><strong>Incident comments</strong> &mdash; append-only, never overwritten.</li>
-</ul>
-</div></div>
-
-<div class="rec"><span class="num-circle">4</span><div>
-<strong>Use Sentinel Watchlists for Automation Flags</strong><br/>
-Store automation flags in a <a href="https://learn.microsoft.com/azure/sentinel/watchlists" style="color:var(--blu)">Watchlist</a>
-keyed by Incident ID. Playbooks query the watchlist instead of relying on tags. Tags can be informational only.
-</div></div>
-
-<div class="rec"><span class="num-circle">5</span><div>
-<strong>File Feedback with Microsoft</strong><br/>
-Request &ldquo;protected tags&rdquo; or merge-style tag semantics via the
-<a href="https://feedbackportal.microsoft.com/feedback/forum/ad198462-1c1c-ec11-b6e7-0022481f8472" style="color:var(--blu)">Defender Feedback Portal</a>.
-This would prevent the issue at the platform level.
-</div></div>
-
+<div class="stats">
+<div class="stat"><div class="n" style="color:var(--red)">1</div><div class="l">Incidents Need Tag Restoration</div></div>
+<div class="stat"><div class="n">1</div><div class="l">Tags to Restore</div></div>
 </div>
 
-<!-- ═══════ SAMPLE PLAYBOOK ═══════ -->
-<h2 id="playbook">&#128736;&#65039; Deploy the Fix</h2>
-<div class="card">
-
-<h3>Option A: One-Click Deploy to Azure (Recommended)</h3>
-<p style="margin-bottom:.8rem">Click the button below to deploy the tag-restoration Logic App directly from GitHub:</p>
-<p style="text-align:center;margin:1rem 0">
-<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fiamjoeycruz%2Fsecuritycopilotindefender%2Fmain%2Fremediation%2Frestore-sentinel-incident-tags%2Fazuredeploy.json"
-   style="display:inline-block;background:#0078d4;color:#fff;padding:.6rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:.95rem">
-&#9729;&#65039; Deploy to Azure
-</a>
-</p>
-<p style="color:#64748b;font-size:.85rem">
-Source: <a href="https://github.com/iamjoeycruz/securitycopilotindefender/tree/main/remediation/restore-sentinel-incident-tags" style="color:var(--blu)">github.com/iamjoeycruz/securitycopilotindefender</a>
-</p>
-
-<p style="margin-top:.8rem"><strong>Fill in these parameters:</strong></p>
-<table style="width:auto;font-size:.85rem">
-<tr><td><strong>Resource Group</strong></td><td>Same resource group as your Sentinel workspace (<code>contoso-sentinel-rg</code>)</td></tr>
-<tr><td><strong>Playbook Name</strong></td><td><code>Restore-SentinelIncidentTags</code> (default)</td></tr>
-<tr><td><strong>Required Tags</strong></td><td><code>AutoEscalate,Tier2-Review</code></td></tr>
+<table>
+<thead><tr><th>Incident #</th><th>Title</th><th>Missing Tags</th><th>Current Tags</th></tr></thead>
+<tbody><tr><td><strong>100001</strong></td><td>Email reported by user as malware or phish</td><td style='color:var(--red)'>CustomTag</td><td>Agent, Credential Phish</td></tr></tbody>
 </table>
 
-<h3>Option B: Azure CLI</h3>
-<pre><code>az deployment group create \
-  --resource-group "contoso-sentinel-rg" \
-  --template-uri "https://raw.githubusercontent.com/iamjoeycruz/securitycopilotindefender/main/remediation/restore-sentinel-incident-tags/azuredeploy.json" \
-  --parameters RequiredTags="AutoEscalate,Tier2-Review"</code></pre>
-
-<h3 style="margin-top:1.5rem">Post-Deployment Steps (Required)</h3>
-<ol class="steps" style="margin-left:1.2rem">
-<li><strong>Authorize the API Connection:</strong> Azure Portal &rarr; Resource Group &rarr; open <code>azuresentinel-Restore-*</code> &rarr; Edit API connection &rarr; Authorize &rarr; Save</li>
-<li><strong>Grant RBAC:</strong> Log Analytics Workspace &rarr; Access control (IAM) &rarr; Add role assignment &rarr; <strong>Microsoft Sentinel Responder</strong> &rarr; Managed Identity &rarr; Logic App &rarr; <code>Restore-SentinelIncidentTags</code></li>
-<li><strong>Create Automation Rule:</strong> Sentinel &rarr; Automation &rarr; Create &rarr;
-  <ul>
-    <li>Trigger: <em>When incident is updated</em></li>
-    <li>Condition: <em>Incident provider contains Microsoft 365 Defender</em> (or leave blank for all)</li>
-    <li>Action: <em>Run playbook &rarr; Restore-SentinelIncidentTags</em></li>
-    <li>Order: <code>100</code></li>
-  </ul>
-</li>
-</ol>
-
-<h3>What the Playbook Does</h3>
-<pre><code>Trigger:  Sentinel Automation Rule fires on "Incident Updated"
-          &darr;
-Step 1:   GET /incidents/{id} &mdash; reads the full incident with current labels
-          &darr;
-Step 2:   Compare current labels against your required tags list
-          (e.g., AutoEscalate, Tier2-Review)
-          &darr;
-Step 3:   IF any required tags are missing:
-            - Merge: current labels &cup; missing tags
-            - PUT /incidents/{id} with etag &mdash; writes the full label set back
-            - Log: "Restored [missing tags]"
-          ELSE:
-            - Log: "Tags intact, no action needed"</code></pre>
-<p style="color:#64748b;font-size:.85rem;margin-top:.5rem">Uses <strong>System Managed Identity</strong> (no credentials). The <code>etag</code> header prevents race conditions. Cost: &lt; &#36;1/month.</p>
-
-<h3>After Deployment — Verify It Works</h3>
-<ol class="steps" style="margin-left:1.2rem">
-<li>Open any phishing incident in Sentinel</li>
-<li>Manually remove a required tag (e.g., <code>AutoRemediate</code>)</li>
-<li>Wait ~30 seconds and refresh &mdash; the tag should reappear</li>
-<li>Check the Logic App <strong>Run History</strong> to confirm the playbook fired</li>
-</ol>
-
-<h3>What Gets Deployed to Your Environment</h3>
-<table style="font-size:.82rem">
-<thead><tr><th>Resource</th><th>Type</th><th>Purpose</th><th>Cost</th></tr></thead>
-<tbody>
-<tr><td><code>Restore-SentinelIncidentTags</code></td><td>Logic App (Consumption)</td><td>Runs on each incident update to check and restore tags</td><td>~&#36;0.000025/action; typically &lt; &#36;1/month</td></tr>
-<tr><td><code>azuresentinel-Restore-*</code></td><td>API Connection</td><td>Connects Logic App to Sentinel trigger webhook</td><td>Free</td></tr>
-<tr><td>RBAC Assignment</td><td>Role Assignment</td><td>Grants Logic App &ldquo;Sentinel Responder&rdquo; to read/write incidents</td><td>Free</td></tr>
-<tr><td>Automation Rule</td><td>Sentinel Automation Rule</td><td>Triggers the Logic App when any incident is updated</td><td>Free (included with Sentinel)</td></tr>
-</tbody></table>
-<p style="color:#64748b;font-size:.8rem;margin-top:.5rem">&#9888;&#65039; <strong>To remove:</strong> Delete the Logic App and Automation Rule from the Azure Portal. The RBAC assignment is automatically cleaned up when the Logic App identity is deleted.</p>
-
-<div class="disclaimer" style="margin-top:1rem">
-<strong>&#9888;&#65039; DEPLOYMENT DISCLAIMER:</strong> The tag-restoration playbook is provided <strong>&ldquo;AS IS&rdquo;</strong>
-for educational and experimental purposes only. It is NOT an officially supported Microsoft tool.
-Deploying it will create billable Azure resources (Logic App). Review the ARM template and deployment
-script before running. You are solely responsible for any resources created, costs incurred, and
-operational impact. Test in a non-production environment first. The authors assume no liability.
+<div class="rc" style="margin-top:1rem;border-left-color:var(--amber);background:#fffbeb">
+<strong>&#9889; How to Fix:</strong> Re-run this script <strong>without</strong> the <code>-DiagnosticOnly</code> flag to restore these tags:<br/>
+<code style="display:block;margin:.5rem 0;padding:.5rem;background:#1e293b;color:#e2e8f0;border-radius:4px;font-size:.85rem">pwsh -ExecutionPolicy Bypass -File "Diagnose-And-Remediate-PhishingTriageAgentTags.ps1"</code>
+<span style="font-size:.85rem;color:#64748b">The script will show all candidates and ask for approval before making any changes.</span>
 </div>
 </div>
 
@@ -329,16 +258,13 @@ operational impact. Test in a non-production environment first. The authors assu
 
 <hr style="border-color:var(--border);margin:2rem 0"/>
 <div class="disclaimer">
-<strong>&#9888;&#65039; DISCLAIMER:</strong> This report and all associated scripts
-(<code>Investigate-PhishingTriageAgentTagRemoval.ps1</code>,
-<code>Deploy-TagRestorationPlaybook.ps1</code>,
-<code>Restore-SentinelTags-Playbook.json</code>) are provided <strong>&ldquo;AS IS&rdquo;</strong>
+<strong>&#9888;&#65039; DISCLAIMER:</strong> This report and all associated scripts are provided <strong>&ldquo;AS IS&rdquo;</strong>
 without warranty of any kind, express or implied. They are for <strong>educational and
 experimental purposes only</strong> and are NOT officially supported Microsoft tools or products.
 Use at your own risk. The authors assume no liability for any damage, data loss, cost, or
 disruption caused by using these scripts. Always review all code before running in your
 environment. Test in non-production environments first.
 </div>
-<p class="meta" style="text-align:center;margin-top:.5rem">Generated by <strong>Investigate-PhishingTriageAgentTagRemoval.ps1</strong> &bull;
+<p class="meta" style="text-align:center;margin-top:.5rem">Generated by <strong>Diagnose-And-Remediate-PhishingTriageAgentTags.ps1</strong> &bull;
 Share this report with your Microsoft support contact or SOC team.</p>
 </body></html>

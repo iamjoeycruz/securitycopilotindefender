@@ -21,32 +21,34 @@ Any organization that:
 
 ---
 
-## Step 1: Diagnose the Problem
+## Step 1: Diagnose & Remediate Existing Incidents
 
-Before deploying any fix, confirm tag removal is actually happening in your environment:
+Use the diagnostic + remediation script to scan your workspace, identify impacted incidents, and restore missing tags:
 
 ```powershell
-# Zero-config — walks you through everything interactively
-.\scripts\Investigate-PhishingTriageAgentTagRemoval.ps1
+# Diagnostic only (read-only report) — run this first
+..\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1 -DiagnosticOnly
+
+# Full diagnose + remediate (interactive approval gates)
+..\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1
 ```
 
-📖 **[Full instructions and prerequisites](../scripts/README.md#investigate-phishingtriageagenttagremovalps1)** | 📄 **[View the script](../scripts/Investigate-PhishingTriageAgentTagRemoval.ps1)**
+📖 **[Full instructions and prerequisites](../scripts/README.md#diagnose-and-remediate-phishingtriageagenttagsps1)** | 📄 **[View the script](../scripts/Diagnose-And-Remediate-PhishingTriageAgentTags.ps1)**
 
-The diagnostic script:
-- ✅ Scans your Sentinel incidents for missing tags (read-only)
-- ✅ Runs KQL queries to identify which actors are stripping tags
-- ✅ Generates an HTML report with findings, evidence, and remediation steps
-- ✅ **Does NOT modify any resources**
+The script:
+- ✅ Uses KQL-first server-side queries (scales to thousands of incidents)
+- ✅ Identifies which actors/services are stripping tags
+- ✅ Generates an HTML report with findings, KQL evidence, and remediation results
+- ✅ Restores only agent-removed tags (not all historical tags)
+- ✅ Two-gate admin approval before any changes
+- ✅ Full property round-trip on PUT with etag concurrency protection
 - 📊 **[See a sample report](../samples/sample-diagnostic-report.html)**
-
-<img width="1804" height="1727" alt="image" src="https://github.com/user-attachments/assets/3f2f5e1a-f910-48b0-946b-0cae6671395f" />
-
 
 ---
 
-## Step 2: Remediation Options
+## Step 2: Prevent Future Tag Stripping
 
-### ⭐ Option 1: Automation Rule (Recommended)
+### Automation Rule
 
 **The simplest, free, Sentinel-native approach.** Deploys an automation rule that re-applies your specified critical tags whenever an incident is updated.
 
@@ -159,9 +161,9 @@ Start-Process ".\TagProtection_DeployReport_*.html"
 
 #### Limitations
 
-- **Static tags only** — you must know in advance which tags to protect. If your tags change frequently, use Option 2 instead.
+- **Static tags only** — you must know in advance which tags to protect. If your tags change frequently, run the diagnostic + remediation script on demand instead.
 - **Severity-change trigger** — the update rule fires when incident severity changes. If an update doesn't change severity, that specific update won't trigger the rule. In practice, the Phishing Triage Agent typically does change severity, so this covers most cases.
-- **Doesn't restore historical tags** — only protects going forward from when the rule is deployed.
+- **Doesn't restore historical tags** — only protects going forward from when the rule is deployed. Use the diagnostic + remediation script to fix existing incidents.
 
 #### Verification
 
@@ -178,60 +180,6 @@ After deployment, verify the rules are active:
 To remove the automation rules:
 1. Go to **Microsoft Sentinel → Automation**
 2. Find and delete **"Protect Critical Incident Tags"** and **"Protect Critical Incident Tags (New Incidents)"**
-
----
-
-### Option 2: Logic App Playbook (Dynamic)
-
-**A more robust approach that dynamically restores _any_ tag**, not just preconfigured ones. It reads previous tags from the Azure Activity Log and merges them back.
-
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fiamjoeycruz%2Fsecuritycopilotindefender%2Fmain%2Fremediation%2Frestore-sentinel-incident-tags%2Fazuredeploy.json)
-
-| | |
-|---|---|
-| **Template** | [`restore-sentinel-incident-tags/azuredeploy.json`](restore-sentinel-incident-tags/azuredeploy.json) |
-| **Documentation** | 📖 **[Full Deployment Guide](restore-sentinel-incident-tags/README.md)** |
-| **Cost** | ~$0.000025/action; typically < $1/month |
-| **Complexity** | Medium — Logic App + Managed Identity + RBAC + Automation Rule |
-| **What it protects** | **Any** tag dynamically (GET → merge → PUT pattern) |
-| **Requirements** | Contributor role on the resource group |
-
-#### How It Works
-
-```
-Sentinel Automation Rule fires on "Incident Updated"
-         ↓
-Logic App:
-  1. GET /incidents/{id} — read current labels
-  2. Compare against required tags list
-  3. IF any tags missing → merge and PUT back with etag
-  4. Log result
-```
-
-#### When to Use This Instead
-
-- Your automation tags change frequently and you can't predict them all
-- You need **any** tag restored, not just a known set
-- You want Activity Log–based tag discovery (restores tags you didn't even know about)
-
-#### Deployment
-
-See the **[Full Deployment Guide](restore-sentinel-incident-tags/README.md)** for step-by-step instructions including post-deployment RBAC and automation rule setup.
-
----
-
-## Which Option Should I Choose?
-
-| Scenario | Recommended |
-|----------|:-----------:|
-| I know which tags my automation uses | ⭐ **Automation Rule** |
-| I want the simplest, fastest fix | ⭐ **Automation Rule** |
-| I want zero cost | ⭐ **Automation Rule** |
-| My tags change often or I can't predict them | **Logic App** |
-| I need dynamic tag restoration from Activity Log | **Logic App** |
-| I want defense in depth (both!) | **Both** |
-
-> **Tip:** You can deploy **both** options together. The automation rule handles the known tags immediately (free, no latency), and the Logic App catches anything else as a safety net.
 
 ---
 
@@ -262,8 +210,8 @@ EVEN IF MICROSOFT HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
 1. **REVIEW** — Read the script/template code to understand what it does
 2. **TEST** — Always deploy in a **non-production environment** first
-3. **AUTHORIZE** — Ensure you have proper permissions (Sentinel Contributor for automation rules, Contributor for Logic App)
+3. **AUTHORIZE** — Ensure you have proper permissions (Sentinel Contributor for automation rules)
 4. **COMPLY** — Verify compliance with your organization's security and change management policies
-5. **MONITOR** — After deployment, verify the rules/playbooks are working as expected
+5. **MONITOR** — After deployment, verify the rules are working as expected
 
 These are **unofficial community tools** provided for **educational and experimental purposes only**. They are **not** Microsoft products.

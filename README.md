@@ -37,10 +37,10 @@ cd securitycopilotindefender
 ### Step 2: Install Azure PowerShell Modules
 
 ```powershell
-# For the diagnostic script
-Install-Module Az.Accounts, Az.SecurityInsights, Az.Monitor, Az.OperationalInsights -Scope CurrentUser -Force
+# For the diagnostic + remediation script
+Install-Module Az.Accounts -Scope CurrentUser -Force
 
-# For the remediation script (only needs Az.Accounts)
+# For the automation rule deployment script (only needs Az.Accounts)
 Install-Module Az.Accounts -Scope CurrentUser -Force
 ```
 
@@ -56,9 +56,9 @@ Connect-AzAccount
 
 | Goal | Command |
 |------|---------|
-| **Diagnose** tag stripping | `.\scripts\Investigate-PhishingTriageAgentTagRemoval.ps1` |
-| **Fix** with Automation Rule (free) | `.\remediation\Deploy-TagProtectionAutomationRule.ps1` |
-| **Fix** with Logic App (dynamic) | [Deploy to Azure](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fiamjoeycruz%2Fsecuritycopilotindefender%2Fmain%2Fremediation%2Frestore-sentinel-incident-tags%2Fazuredeploy.json) |
+| **Diagnose & remediate** stripped tags | `.\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1` |
+| **Diagnose only** (read-only report) | `.\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1 -DiagnosticOnly` |
+| **Prevent future** stripping (Automation Rule) | `.\remediation\Deploy-TagProtectionAutomationRule.ps1` |
 
 All scripts support **interactive mode** (no parameters — walks you through everything) and **parameterized mode** (pass all values for automation). See the individual sections below for detailed instructions.
 
@@ -68,15 +68,12 @@ All scripts support **interactive mode** (no parameters — walks you through ev
 
 ```
 ├── scripts/                         # PowerShell diagnostic & simulation scripts
+│   ├── Diagnose-And-Remediate-PhishingTriageAgentTags.ps1  # ⭐ Diagnose + fix
 │   ├── Deploy-KubernetesAlertSimulation.ps1
-│   ├── Get-DefenderIncidentReport.ps1
-│   └── Investigate-PhishingTriageAgentTagRemoval.ps1
+│   └── Get-DefenderIncidentReport.ps1
 │
-├── remediation/                     # Deployable fixes
-│   ├── Deploy-TagProtectionAutomationRule.ps1  # ⭐ Recommended (free)
-│   └── restore-sentinel-incident-tags/
-│       ├── azuredeploy.json         # One-click Deploy to Azure (Logic App)
-│       └── README.md                # Deployment guide
+├── remediation/                     # Preventive fixes (forward-looking)
+│   └── Deploy-TagProtectionAutomationRule.ps1  # Automation rule (free)
 │
 ├── samples/                         # Anonymized sample report outputs
 │   ├── sample-diagnostic-report.html
@@ -145,24 +142,27 @@ Retrieves incident data from Microsoft Defender for Endpoint via Microsoft Graph
 
 ---
 
-### Phishing Triage Agent — Tag Removal Diagnostic
+### Phishing Triage Agent — Tag Diagnose & Remediate
 
-Investigates whether the Security Copilot Phishing Triage Agent (or other services) are stripping tags from Sentinel incidents. Generates an HTML report with findings, KQL evidence, and remediation steps.
+Diagnoses whether the Security Copilot Phishing Triage Agent is stripping tags from Sentinel incidents, and optionally **restores the missing tags**. Uses KQL-first queries for scale (handles thousands of incidents). Generates an HTML report with findings, KQL evidence, and remediation results.
 
 | | |
 |---|---|
-| **Script** | [`scripts/Investigate-PhishingTriageAgentTagRemoval.ps1`](scripts/Investigate-PhishingTriageAgentTagRemoval.ps1) |
-| **Detailed Instructions** | 📖 **[scripts/README.md](scripts/README.md#investigate-phishingtriageagenttagremovalps1)** |
-| **Type** | Read-only diagnostic (does NOT modify any resources) |
-| **Requirements** | Az.Accounts, Az.SecurityInsights, Az.Monitor, Az.OperationalInsights |
-| **Output** | `PhishingTriageAgent_Report_YYYYMMDD_HHMMSS.html` |
+| **Script** | [`scripts/Diagnose-And-Remediate-PhishingTriageAgentTags.ps1`](scripts/Diagnose-And-Remediate-PhishingTriageAgentTags.ps1) |
+| **Detailed Instructions** | 📖 **[scripts/README.md](scripts/README.md#diagnose-and-remediate-phishingtriageagenttagsps1)** |
+| **Type** | Diagnostic + optional remediation (use `-DiagnosticOnly` for read-only mode) |
+| **Requirements** | Az.Accounts |
+| **Output** | `PhishingTriageAgent_DiagnoseRemediate_YYYYMMDD_HHMMSS.html` |
 
 ```powershell
-# Interactive mode — walks you through everything
-.\scripts\Investigate-PhishingTriageAgentTagRemoval.ps1
+# Diagnostic only — read-only report, no changes
+.\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1 -DiagnosticOnly
 
-# Or pass parameters directly
-.\scripts\Investigate-PhishingTriageAgentTagRemoval.ps1 `
+# Full diagnose + remediate (interactive approval gates)
+.\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1
+
+# Parameterized mode
+.\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1 `
     -SubscriptionId "xxxx" -ResourceGroupName "rg" `
     -WorkspaceName "ws" -ExpectedTags "AutoRemediate","PhishingReview"
 ```
@@ -173,16 +173,21 @@ Investigates whether the Security Copilot Phishing Triage Agent (or other servic
 
 The Phishing Triage Agent and Defender XDR alert correlation can strip tags/labels from Sentinel incidents, breaking tag-based automation. This happens because Sentinel's PUT API uses **full-replace semantics** — if the update payload omits the `labels` field, all existing tags are deleted.
 
-Choose the approach that fits your needs:
+### Two-step approach
 
-### Option 1: Automation Rule ⭐ Recommended
+| Step | Tool | What it does |
+|------|------|-------------|
+| **1. Fix existing incidents** | [`Diagnose-And-Remediate-PhishingTriageAgentTags.ps1`](scripts/Diagnose-And-Remediate-PhishingTriageAgentTags.ps1) | Scans your Sentinel workspace via KQL, identifies incidents where the agent stripped tags, and restores them. Run with `-DiagnosticOnly` first to review the report before remediating. |
+| **2. Prevent future stripping** | [`Deploy-TagProtectionAutomationRule.ps1`](remediation/Deploy-TagProtectionAutomationRule.ps1) | Deploys a free Sentinel automation rule that re-applies your critical tags whenever an incident is updated. |
+
+### Automation Rule (Prevent Future Issues)
 
 The simplest, free, Sentinel-native approach. Deploys an automation rule that re-applies your specified critical tags whenever an incident is updated.
 
 | | |
 |---|---|
 | **Script** | [`remediation/Deploy-TagProtectionAutomationRule.ps1`](remediation/Deploy-TagProtectionAutomationRule.ps1) |
-| **Detailed Instructions** | 📖 **[remediation/README.md](remediation/README.md#-option-1-automation-rule-recommended)** |
+| **Detailed Instructions** | 📖 **[remediation/README.md](remediation/README.md)** |
 | **Type** | Sentinel Automation Rule (native, no extra resources) |
 | **Cost** | **Free** — automation rules have no per-execution cost |
 | **Protects** | Specific tags you configure (e.g., `AutoEscalate`, `Tier2-Review`) |
@@ -198,29 +203,7 @@ The simplest, free, Sentinel-native approach. Deploys an automation rule that re
     -WorkspaceName "ws" -TagsToProtect "AutoEscalate","Tier2-Review"
 ```
 
-### Option 2: Logic App Playbook (Dynamic)
-
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fiamjoeycruz%2Fsecuritycopilotindefender%2Fmain%2Fremediation%2Frestore-sentinel-incident-tags%2Fazuredeploy.json)
-
-A Logic App that dynamically restores **any** tag that was stripped — it reads previous tags from the Activity Log and merges them back.
-
-| | |
-|---|---|
-| **Template** | [`remediation/restore-sentinel-incident-tags/azuredeploy.json`](remediation/restore-sentinel-incident-tags/azuredeploy.json) |
-| **Documentation** | 📖 **[Full Deployment Guide](remediation/restore-sentinel-incident-tags/README.md)** |
-| **Cost** | < $1/month (Logic App Consumption tier) |
-| **Protects** | **Any** tag dynamically (GET → merge → PUT pattern) |
-| **Limitation** | Requires Logic App + Managed Identity + RBAC setup |
-
-### Which should I choose?
-
-| Criteria | Automation Rule | Logic App |
-|----------|:-:|:-:|
-| I know exactly which tags to protect | ✅ | ✅ |
-| Tags change frequently / I can't predict them | ❌ | ✅ |
-| I want zero cost | ✅ | ❌ |
-| I want zero extra Azure resources | ✅ | ❌ |
-| I need dynamic tag restoration from Activity Log | ❌ | ✅ |
+> **Note:** Automation rules can only add **static, predefined tags**. If your tags change frequently, use the diagnostic + remediation script to restore missing tags on demand.
 
 ---
 

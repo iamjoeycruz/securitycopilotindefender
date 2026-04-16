@@ -8,7 +8,7 @@
 |--------|-------------|---------------------|
 | [`Diagnose-And-Remediate-PhishingTriageAgentTags.ps1`](Diagnose-And-Remediate-PhishingTriageAgentTags.ps1) | Diagnoses & remediates Phishing Triage Agent tag stripping | Optional — use `-DiagnosticOnly` for read-only |
 | [`Deploy-KubernetesAlertSimulation.ps1`](Deploy-KubernetesAlertSimulation.ps1) | Runs Defender for Cloud K8s attack simulations | Yes — creates test pods on AKS |
-| [`Get-DefenderIncidentReport.ps1`](Get-DefenderIncidentReport.ps1) | Generates HTML reports for Defender incidents via Microsoft Graph | No — read-only |
+| [`Get-DefenderIncidentReport.ps1`](Get-DefenderIncidentReport.ps1) | Generates HTML reports for Defender incidents via Microsoft Graph; auto-discovers phishing triage agent incidents | No — read-only |
 
 ---
 
@@ -144,14 +144,110 @@ See the [main README](../README.md#kubernetes-alert-simulation) and the [Complet
 
 ## Get-DefenderIncidentReport.ps1
 
-Generates HTML reports for Defender incidents via Microsoft Graph.
+Retrieves incident and alert data from Microsoft Defender XDR using the Microsoft Graph Security API and generates a comprehensive, interactive HTML report. Designed to surface **Security Copilot Phishing Triage Agent** activity — including automated classifications, verdicts, and evidence analysis — in a single, shareable document.
+
+### What It Does
+
+1. **Connects to Microsoft Graph** — authenticates with `SecurityIncident.Read.All` and `SecurityAlert.Read.All` scopes (installs the Graph modules automatically if missing)
+2. **Finds the incident** — either by a specific Incident ID you provide, or by **automatically discovering the most recent phishing triage agent incident** (matching "Email reported by user as malware or phish" display names, then falling back to system/custom tag checks for `Phish`, `Triage`, or `Agent` tags)
+3. **Retrieves incident details** — pulls incident metadata, associated alerts, system tags, custom tags, and phishing triage indicators from both v1.0 and beta Graph endpoints
+4. **Retrieves alert details** — fetches the most recent alert's full evidence chain (mailbox, analyzed message, IP, user, mail cluster evidence), MITRE ATT&CK techniques, classification, determination, and detection source
+5. **Collects alert activity timeline** — gathers status changes, classifications, investigation state, and analyst comments
+6. **Retrieves Security Copilot activity data** — attempts to pull automated triage results including verdict, confidence level, and entity analysis from Copilot/investigation APIs
+7. **Generates an interactive HTML report** — produces a styled, expandable report with:
+   - Incident overview with severity, status, and tags
+   - Phishing Triage Agent detection banner (when agent involvement is found)
+   - Full alert details with evidence items
+   - Activity timeline
+   - Security Copilot activity section (classification results, prompts, entity analysis)
+   - Summary statistics
+   - Report generation flow (documenting every API call made)
+   - Embedded JSON data with copy-to-clipboard
+8. **Exports JSON** — saves a separate `.json` file with all collected data for integration with other tools
+
+### Sample Report
+
+An anonymized sample report is included: [`sample-report.html`](sample-report.html). Download and open it in a browser to see what the output looks like.
+
+### How to Run
+
+#### Option A: Auto-discover most recent phishing triage incident (no ID needed)
 
 ```powershell
-# Get help
-Get-Help .\Get-DefenderIncidentReport.ps1 -Detailed
+.\Get-DefenderIncidentReport.ps1
+```
 
-# Run for a specific incident
+The script will search the 50 most recent incidents for one matching phishing triage agent patterns and generate a report automatically.
+
+#### Option B: Specific incident ID
+
+```powershell
 .\Get-DefenderIncidentReport.ps1 -IncidentId 256968
 ```
 
-**Requirements:** `Microsoft.Graph.Security`, `Microsoft.Graph.Authentication` modules and `SecurityIncident.Read.All` + `SecurityAlert.Read.All` permissions.
+#### Option C: Specific tenant and output path
+
+```powershell
+.\Get-DefenderIncidentReport.ps1 -IncidentId 256968 -TenantId "your-tenant-id" -OutputPath "C:\Reports\my_report" -Format HTML
+```
+
+### Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `-IncidentId` | No | The incident ID to retrieve. If omitted, auto-discovers the most recent phishing triage incident |
+| `-TenantId` | No | Azure AD Tenant ID (GUID). If omitted, uses automatic tenant detection |
+| `-OutputPath` | No | Full path for the report (without extension). If omitted, saves to temp directory and opens in browser |
+| `-Format` | No | `HTML` (default) or `Text` |
+
+### Prerequisites
+
+| Requirement | Details |
+|-------------|---------|
+| **PowerShell** | 7.0 or later (`pwsh`) |
+| **Graph Modules** | `Microsoft.Graph.Security`, `Microsoft.Graph.Authentication` (auto-installed if missing) |
+| **Permissions** | `SecurityIncident.Read.All`, `SecurityAlert.Read.All` |
+| **Network** | Access to `graph.microsoft.com` |
+
+### What to Expect
+
+```
+[Auth]        Connect to Microsoft Graph (browser sign-in on first run)
+[Discovery]   Auto-find phishing triage incident (if no ID provided)
+[Incident]    Retrieve incident + tags + phishing triage indicators
+[Alert]       Retrieve most recent alert + evidence + classification
+[Activities]  Retrieve alert activity timeline
+[Copilot]     Retrieve Security Copilot activity data (if available)
+[Report]      Generate HTML report + JSON export → opens in browser
+```
+
+### Output
+
+The script saves two files:
+
+```
+DefenderReport_YYYYMMDD_HHMMSS.html   — Interactive HTML report
+DefenderReport_YYYYMMDD_HHMMSS.json   — Machine-readable JSON export
+```
+
+The HTML report includes:
+- **Incident Overview** — ID, display name, severity, status, classification, determination, tags
+- **Phishing Triage Agent Banner** — highlighted when system/custom tags indicate agent involvement (e.g., "Credential Phish", "Agent")
+- **Alert Details** — full alert metadata, MITRE techniques, detection/service source
+- **Evidence** — mailbox, analyzed message, IP, user, and mail cluster evidence with verdicts
+- **Activity Timeline** — status changes, classifications, investigation state
+- **Security Copilot Activity** — automated triage results, prompts, verdicts, entity analysis
+- **Summary Statistics** — alert counts by severity, evidence item counts
+- **Report Generation Flow** — every PowerShell command and Graph API call documented with timestamps
+- **JSON Data Export** — embedded JSON with copy-to-clipboard button
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `Module not found` | The script auto-installs Graph modules; if that fails, run `Install-Module Microsoft.Graph.Security -Scope CurrentUser -Force` manually |
+| Auth window hidden | WAM (Web Account Manager) may open the browser behind other windows — check your taskbar |
+| `User canceled authentication` | The browser auth prompt was closed. Re-run the script and complete sign-in |
+| `No recent phishing triage incidents found` | No incidents matching "Email reported by user as malware or phish" exist in the last 50 incidents. Provide an `-IncidentId` manually |
+| `Authentication needed` | Your Graph session expired. The script will re-authenticate on next run |
+| `Security Copilot API not available` | Normal if Copilot isn't enabled. The report will still include incident/alert data |

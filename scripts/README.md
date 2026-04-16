@@ -168,6 +168,7 @@ Retrieves incident and alert data from Microsoft Defender XDR using the Microsof
 ### Sample Report
 
 An anonymized sample report is included: [`sample-report.html`](sample-report.html). Download and open it in a browser to see what the output looks like.
+<img width="3205" height="1438" alt="image" src="https://github.com/user-attachments/assets/ddaf7607-69c6-4a15-bf27-edf8be0e3077" />
 
 ### How to Run
 

@@ -19,9 +19,11 @@ Any organization that:
 
 ---
 
-## Step 1: Diagnose & Remediate Existing Incidents
+## Supported Remediation Script
 
-Use the diagnostic + remediation script to scan your workspace, identify impacted incidents, and restore missing tags:
+The only supported remediation script is **[`Diagnose-And-Remediate-PhishingTriageAgentTags.ps1`](../scripts/Diagnose-And-Remediate-PhishingTriageAgentTags.ps1)**, located in the [`scripts/`](../scripts/) directory.
+
+Use it to scan your workspace, identify impacted incidents, and restore missing tags:
 
 ```powershell
 # Diagnostic only (read-only report) — run this first
@@ -42,143 +44,7 @@ The script:
 - ✅ Full property round-trip on PUT with etag concurrency protection
 - 📊 **[See a sample report](../samples/sample-diagnostic-report.html)**
 
----
-
-## Step 2: Prevent Future Tag Stripping
-
-### Automation Rule
-
-**The simplest, free, Sentinel-native approach.** Deploys an automation rule that re-applies your specified critical tags whenever an incident is updated.
-
-| | |
-|---|---|
-| **Script** | [`Deploy-TagProtectionAutomationRule.ps1`](Deploy-TagProtectionAutomationRule.ps1) |
-| **Cost** | **Free** — automation rules have no per-execution cost |
-| **Complexity** | Low — single PowerShell script, no extra Azure resources |
-| **What it protects** | Specific tags you configure in advance |
-| **Requirements** | PowerShell 7+, `Az.Accounts` module, Sentinel Contributor role |
-
-#### How It Works
-
-```
-You run the script → it asks which tags to protect
-                         ↓
-Creates Automation Rule 1 (Update trigger):
-  When incident severity changes → add your tags back
-                         ↓
-Creates Automation Rule 2 (Create trigger):
-  When new incident is created → stamp your tags on it
-```
-
-The "Add tags" action is **idempotent** — if the tag already exists, nothing happens. If it was stripped, it gets re-added.
-
-#### Prerequisites
-
-| Requirement | Details |
-|-------------|---------|
-| **PowerShell** | 7.0 or later (`pwsh`). Check with `$PSVersionTable.PSVersion` |
-| **Azure Module** | `Az.Accounts` |
-| **Azure Permissions** | **Microsoft Sentinel Contributor** on the target workspace |
-| **Network** | Access to `management.azure.com` |
-
-Install the module (one-time):
-
-```powershell
-Install-Module Az.Accounts -Scope CurrentUser -Force
-```
-
-#### How to Run
-
-**Option A: Interactive mode (recommended for first-time users)**
-
-```powershell
-.\Deploy-TagProtectionAutomationRule.ps1
-```
-
-The wizard will:
-1. Check that `Az.Accounts` is installed
-2. Authenticate to Azure (or reuse an existing session)
-3. List your subscriptions and ask you to pick one
-4. List Sentinel-enabled workspaces and ask you to pick one
-5. Scan recent incidents and show which tags are currently in use
-6. Ask which tags you want to protect (comma-separated)
-7. Deploy two automation rules
-8. Verify deployment and generate an HTML report
-<img width="2702" height="1364" alt="image" src="https://github.com/user-attachments/assets/f0bcf0a2-2383-4cdd-9906-0f5763f47afa" />
-
-
-
-
-**Option B: Parameterized mode (for automation or repeat runs)**
-
-```powershell
-.\Deploy-TagProtectionAutomationRule.ps1 `
-    -SubscriptionId "your-sub-id" `
-    -ResourceGroupName "your-rg" `
-    -WorkspaceName "your-workspace" `
-    -TagsToProtect "AutoEscalate","Tier2-Review","VIP-Customer"
-```
-
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `-SubscriptionId` | No* | Azure subscription ID containing your Sentinel workspace |
-| `-ResourceGroupName` | No* | Resource group containing the workspace |
-| `-WorkspaceName` | No* | Name of the Log Analytics workspace with Sentinel enabled |
-| `-TagsToProtect` | No* | Array of tag names to protect (e.g., `"Tag1","Tag2"`) |
-
-\* Required only if you want to skip the interactive prompts.
-
-#### What to Expect
-
-```
-[1/5] Checking prerequisites           — verifies Az.Accounts is installed
-[2/5] Connecting to Azure               — authenticates (or reuses session)
-[3/5] Finding Sentinel workspaces       — auto-discovers workspace
-[4/5] Discovering tags                  — scans incidents, shows tags in use
-[5/5] Deploying automation rules        — creates 2 rules via REST API
-```
-
-#### Output
-
-The script saves an HTML deployment report to your current directory:
-
-```
-TagProtection_DeployReport_YYYYMMDD_HHMMSS.html
-```
-
-The report includes:
-- **Deployment summary** — workspace, tags protected, rule IDs
-- **Rules deployed** — names, triggers, and actions for each rule
-- **Next steps** — how to verify, test, and manage the rules
-- **Disclaimer** — educational/experimental use notice
-
-Open the report in any browser:
-
-```powershell
-Start-Process ".\TagProtection_DeployReport_*.html"
-```
-
-#### Limitations
-
-- **Static tags only** — you must know in advance which tags to protect. If your tags change frequently, run the diagnostic + remediation script on demand instead.
-- **Severity-change trigger** — the update rule fires when incident severity changes. If an update doesn't change severity, that specific update won't trigger the rule. In practice, the Phishing Triage Agent typically does change severity, so this covers most cases.
-- **Doesn't restore historical tags** — only protects going forward from when the rule is deployed. Use the diagnostic + remediation script to fix existing incidents.
-
-#### Verification
-
-After deployment, verify the rules are active:
-
-1. Go to **Microsoft Sentinel → Automation** in the Azure portal
-2. You should see two new rules:
-   - **Protect Critical Incident Tags** (update trigger)
-   - **Protect Critical Incident Tags (New Incidents)** (create trigger)
-3. Confirm both rules show **Status: Enabled**
-
-#### Removal
-
-To remove the automation rules:
-1. Go to **Microsoft Sentinel → Automation**
-2. Find and delete **"Protect Critical Incident Tags"** and **"Protect Critical Incident Tags (New Incidents)"**
+> **Note:** The `Deploy-TagProtectionAutomationRule.ps1` script in this directory is **deprecated and no longer supported**. Use the diagnose & remediate script above instead.
 
 ---
 

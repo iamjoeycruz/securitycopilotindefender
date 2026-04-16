@@ -44,8 +44,6 @@ The script:
 - ✅ Full property round-trip on PUT with etag concurrency protection
 - 📊 **[See a sample report](../samples/sample-diagnostic-report.html)**
 
-> **Note:** The `Deploy-TagProtectionAutomationRule.ps1` script in this directory is **deprecated and no longer supported**. Use the diagnose & remediate script above instead.
-
 ---
 
 ## ⚠️ Disclaimer

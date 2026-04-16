@@ -39,9 +39,6 @@ cd securitycopilotindefender
 ```powershell
 # For the diagnostic + remediation script
 Install-Module Az.Accounts -Scope CurrentUser -Force
-
-# For the automation rule deployment script (only needs Az.Accounts)
-Install-Module Az.Accounts -Scope CurrentUser -Force
 ```
 
 ### Step 3: Authenticate to Azure
@@ -58,7 +55,6 @@ Connect-AzAccount
 |------|---------|
 | **Diagnose & remediate** stripped tags | `.\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1` |
 | **Diagnose only** (read-only report) | `.\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1 -DiagnosticOnly` |
-| **Prevent future** stripping (Automation Rule) | `.\remediation\Deploy-TagProtectionAutomationRule.ps1` |
 
 All scripts support **interactive mode** (no parameters — walks you through everything) and **parameterized mode** (pass all values for automation). See the individual sections below for detailed instructions.
 
@@ -72,12 +68,10 @@ All scripts support **interactive mode** (no parameters — walks you through ev
 │   ├── Deploy-KubernetesAlertSimulation.ps1
 │   └── Get-DefenderIncidentReport.ps1
 │
-├── remediation/                     # Preventive fixes (forward-looking)
-│   └── Deploy-TagProtectionAutomationRule.ps1  # Automation rule (free)
+├── remediation/                     # Remediation guidance & documentation
 │
 ├── samples/                         # Anonymized sample report outputs
-│   ├── sample-diagnostic-report.html
-│   └── sample-deployment-report.html
+│   └── sample-diagnostic-report.html
 │
 ├── demos/                           # Demo content & guidebooks
 │   └── human-operated-ransomware-guidebook.txt
@@ -173,37 +167,19 @@ Diagnoses whether the Security Copilot Phishing Triage Agent is stripping tags f
 
 There was a bug that was overwriting the tags.
 
-### Two-step approach
+### Recommended Approach
 
-| Step | Tool | What it does |
-|------|------|-------------|
-| **1. Fix existing incidents** | [`Diagnose-And-Remediate-PhishingTriageAgentTags.ps1`](scripts/Diagnose-And-Remediate-PhishingTriageAgentTags.ps1) | Scans your Sentinel workspace via KQL, identifies incidents where the agent stripped tags, and restores them. Run with `-DiagnosticOnly` first to review the report before remediating. |
-| **2. Prevent future stripping** | [`Deploy-TagProtectionAutomationRule.ps1`](remediation/Deploy-TagProtectionAutomationRule.ps1) | Deploys a free Sentinel automation rule that re-applies your critical tags whenever an incident is updated. |
-
-### Automation Rule (Prevent Future Issues)
-
-The simplest, free, Sentinel-native approach. Deploys an automation rule that re-applies your specified critical tags whenever an incident is updated.
-
-| | |
-|---|---|
-| **Script** | [`remediation/Deploy-TagProtectionAutomationRule.ps1`](remediation/Deploy-TagProtectionAutomationRule.ps1) |
-| **Detailed Instructions** | 📖 **[remediation/README.md](remediation/README.md)** |
-| **Type** | Sentinel Automation Rule (native, no extra resources) |
-| **Cost** | **Free** — automation rules have no per-execution cost |
-| **Protects** | Specific tags you configure (e.g., `AutoEscalate`, `Tier2-Review`) |
-| **Output** | `TagProtection_DeployReport_YYYYMMDD_HHMMSS.html` |
+Use **[`Diagnose-And-Remediate-PhishingTriageAgentTags.ps1`](scripts/Diagnose-And-Remediate-PhishingTriageAgentTags.ps1)** to scan your Sentinel workspace via KQL, identify incidents where the agent stripped tags, and restore them. Run with `-DiagnosticOnly` first to review the report before remediating.
 
 ```powershell
-# Interactive mode — walks you through everything
-.\remediation\Deploy-TagProtectionAutomationRule.ps1
+# Diagnostic only — read-only report, no changes
+.\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1 -DiagnosticOnly
 
-# Or pass parameters directly
-.\remediation\Deploy-TagProtectionAutomationRule.ps1 `
-    -SubscriptionId "xxxx" -ResourceGroupName "rg" `
-    -WorkspaceName "ws" -TagsToProtect "AutoEscalate","Tier2-Review"
+# Full diagnose + remediate (interactive approval gates)
+.\scripts\Diagnose-And-Remediate-PhishingTriageAgentTags.ps1
 ```
 
-> **Note:** Automation rules can only add **static, predefined tags**. If your tags change frequently, use the diagnostic + remediation script to restore missing tags on demand.
+This script dynamically detects which tags were removed using KQL tag history and restores exactly what was lost — no need to predefine tags.
 
 ---
 
@@ -212,7 +188,6 @@ The simplest, free, Sentinel-native approach. Deploys an automation rule that re
 Want to see what the reports look like before running anything? Check the [`samples/`](samples/) directory for anonymized HTML report examples:
 
 - [**Diagnostic Report Sample**](samples/sample-diagnostic-report.html) — shows findings when tag stripping is detected
-- [**Deployment Report Sample**](samples/sample-deployment-report.html) — shows the output after deploying tag protection rules
 
 ---
 

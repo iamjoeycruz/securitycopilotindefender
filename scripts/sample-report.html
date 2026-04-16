@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microsoft Defender Incident Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header .timestamp {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            border-left: 4px solid #0078d4;
+            padding-left: 20px;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            color: #0078d4;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .info-item {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 16px;
+            color: #333;
+            word-wrap: break-word;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .severity-high {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .severity-medium {
+            background: #fd7e14;
+            color: white;
+        }
+        
+        .severity-low {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .severity-informational {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .status-active {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .status-resolved {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-inprogress {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .alert-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .alert-box-high {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .table th {
+            background: #0078d4;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .table tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .evidence-item {
+            background: #e7f3ff;
+            border-left: 3px solid #0078d4;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        
+        .json-details {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .footer {
+            background: #f9f9f9;
+            padding: 20px 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        
+        .expandable {
+            margin-bottom: 15px;
+        }
+        
+        .expand-header {
+            background: #0078d4;
+            color: white;
+            padding: 12px 15px;
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s;
+            user-select: none;
+        }
+        
+        .expand-header:hover {
+            background: #005a9e;
+        }
+        
+        .expand-header .arrow {
+            transition: transform 0.3s;
+            font-size: 18px;
+        }
+        
+        .expand-header.active .arrow {
+            transform: rotate(180deg);
+        }
+        
+        .expand-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+        }
+        
+        .expand-content.active {
+            max-height: 2000px;
+            overflow-y: auto;
+        }
+        
+        .expand-content-inner {
+            padding: 15px;
+        }
+        
+        .json-viewer {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            line-height: 1.6;
+        }
+        
+        .json-key {
+            color: #9cdcfe;
+        }
+        
+        .json-string {
+            color: #ce9178;
+        }
+        
+        .json-number {
+            color: #b5cea8;
+        }
+        
+        .json-boolean {
+            color: #569cd6;
+        }
+        
+        .json-null {
+            color: #569cd6;
+        }
+        
+        .copy-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .copy-button:hover {
+            background: #218838;
+        }
+        
+        .incident-link-button {
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 15px;
+            transition: background 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .incident-link-button:hover {
+            background: #005a9e;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .incident-link-button:active {
+            transform: translateY(1px);
+        }
+    </style>
+    <script>
+        function toggleExpand(element) {
+            element.classList.toggle('active');
+            const content = element.nextElementSibling;
+            content.classList.toggle('active');
+        }
+        
+        function copyJSON() {
+            const jsonText = document.getElementById('json-data').textContent;
+            navigator.clipboard.writeText(jsonText).then(function() {
+                const btn = document.getElementById('copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                setTimeout(function() {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        }
+        
+        window.onload = function() {
+            // Auto-expand first few sections
+            const headers = document.querySelectorAll('.expand-header');
+            if (headers.length > 0) {
+                headers[0].click(); // Expand first section by default
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Microsoft Defender Incident & Alert Report</h1>
+            <div class="timestamp">Generated: 2025-01-15 12:00:00</div>            <a href="https://security.microsoft.com/incidents/100001?tid=00000000-0000-0000-0000-000000000000" target="_blank" class="incident-link-button">🔗 Open Incident 100001 in Microsoft 365 Defender</a>        </div>
+        
+        <div class="content">            <div class="section">
+                <h2 class="section-title">📋 Incident Overview</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Incident ID</div>
+                        <div class="info-value">100001</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Display Name</div>
+                        <div class="info-value">Email reported by user as malware or phish involving one user</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Status</div>
+                        <div class="info-value"><span class="badge status-resolved">resolved</span></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Severity</div>
+                        <div class="info-value"><span class="badge severity-low">low</span></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Classification</div>
+                        <div class="info-value">unknown</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Determination</div>
+                        <div class="info-value">unknown</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Created</div>
+                        <div class="info-value">01/15/2025 14:00:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Last Updated</div>
+                        <div class="info-value">01/15/2025 14:15:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Assigned To</div>
+                        <div class="info-value"></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Redirect Incident ID</div>
+                        <div class="info-value"></div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">🤖 System Tags</div>
+                        <div class="info-value"><span class='badge severity-high' style='margin: 2px;'>Credential Phish</span></div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">🏷️ Custom Tags</div>
+                        <div class="info-value"><span class='badge severity-medium' style='margin: 2px;'>Agent</span></div>
+                    </div>                    <div class="info-item" style="background: #e7f3ff; border: 2px solid #0078d4;">
+                        <div class="info-label" style="color: #0078d4;">🎯 Phishing Triage Agent</div>
+                        <div class="info-value" style="color: #0078d4; font-weight: bold;">This incident was triaged by automated phishing analysis</div>
+                    </div>                </div>                <h3 style="margin-top: 20px; margin-bottom: 15px;">Associated Alerts (1)</h3>                <div class="expandable">
+                    <div class="expand-header" onclick="toggleExpand(this)">
+                        <span><strong>Alert #1:</strong> Email reported by user as malware or phish <span class="badge severity-low">low</span></span>
+                        <span class="arrow">▼</span>
+                    </div>
+                    <div class="expand-content">
+                        <div class="expand-content-inner">
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">Alert ID</div>
+                                    <div class="info-value" style="font-size: 12px;">sample-alert-id-0000-0000-000000000001</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Status</div>
+                                    <div class="info-value">resolved</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Category</div>
+                                    <div class="info-value">InitialAccess</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Detection Source</div>
+                                    <div class="info-value">microsoftDefenderForOffice365</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Service Source</div>
+                                    <div class="info-value">microsoftDefenderForOffice365</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Created</div>
+                                    <div class="info-value">01/15/2025 14:00:00</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">First Activity</div>
+                                    <div class="info-value">01/15/2025 14:00:00</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Last Activity</div>
+                                    <div class="info-value">01/15/2025 14:00:00</div>
+                                </div>
+                            </div>                            <h4 style="margin-top: 15px; margin-bottom: 10px;">Description</h4>
+                            <div class="alert-box">This alert is triggered when any email message is reported as malware or phish by users -V1.0.0.3</div>                        </div>
+                    </div>
+                </div></div>            <div class="section">
+                <h2 class="section-title">🚨 Alert Details</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Alert ID</div>
+                        <div class="info-value" style="font-size: 13px;">sample-alert-id-0000-0000-000000000001</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Title</div>
+                        <div class="info-value">Email reported by user as malware or phish</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Severity</div>
+                        <div class="info-value"><span class="badge severity-low">low</span></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Status</div>
+                        <div class="info-value"><span class="badge status-resolved">resolved</span></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Category</div>
+                        <div class="info-value">InitialAccess</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Detection Source</div>
+                        <div class="info-value">microsoftDefenderForOffice365</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Service Source</div>
+                        <div class="info-value">microsoftDefenderForOffice365</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Provider Alert ID</div>
+                        <div class="info-value" style="font-size: 13px;">sample-provider-0000-0000-000000000001</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Created</div>
+                        <div class="info-value">01/15/2025 14:00:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Last Updated</div>
+                        <div class="info-value">01/15/2025 14:15:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">First Activity</div>
+                        <div class="info-value">01/15/2025 14:00:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Last Activity</div>
+                        <div class="info-value">01/15/2025 14:00:00</div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">🎯 Detailed Classification</div>
+                        <div class="info-value"><span class="badge severity-informational">falsePositive</span></div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">Actor Display Name</div>
+                        <div class="info-value"></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Alert Web URL</div>
+                        <div class="info-value" style="font-size: 11px; word-break: break-all;">https://security.microsoft.com/alerts/sample-alert-id-0000-0000-000000000001?tid=00000000-0000-0000-0000-000000000000</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Assigned To</div>
+                        <div class="info-value"></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Classification</div>
+                        <div class="info-value">falsePositive</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Determination</div>
+                        <div class="info-value">notMalicious</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Incident ID</div>
+                        <div class="info-value">100001</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Incident Web URL</div>
+                        <div class="info-value" style="font-size: 11px; word-break: break-all;">https://security.microsoft.com/incident2/100001/overview?tid=00000000-0000-0000-0000-000000000000</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Mitre Techniques</div>
+                        <div class="info-value">T1566</div>
+                    </div>                </div>
+                
+                <h3 style="margin-top: 20px; margin-bottom: 10px;">Description</h3>
+                <div class="alert-box">
+                    This alert is triggered when any email message is reported as malware or phish by users -V1.0.0.3
+                </div>
+                
+                <h3 style="margin-top: 20px; margin-bottom: 10px;">Recommended Actions</h3>
+                <div class="alert-box">
+                    
+                </div>                <h3 style="margin-top: 20px; margin-bottom: 15px;">📁 Evidence (8 items)</h3>                <div class="evidence-item">
+                    <strong>Type:</strong> mailboxEvidence<br>
+                    <strong>Verdict:</strong> noThreatsFound<br>
+                    <strong>Remediation Status:</strong> none<br>                    <strong>primaryAddress:</strong> user@contoso.com<br>
+                    <strong>userAccount:</strong> System.Collections.Generic.Dictionary`2[System.String,System.Object]<br>
+                </div>
+                <div class="evidence-item">
+                    <strong>Type:</strong> analyzedMessageEvidence<br>
+                    <strong>Verdict:</strong> noThreatsFound<br>
+                    <strong>Remediation Status:</strong> none<br>                    <strong>networkMessageId:</strong> sample-netmsg-0000-0000-000000000001<br>
+                    <strong>internetMessageId:</strong> sample-message-id@example.com<br>
+                    <strong>subject:</strong> Sample Marketing Email Subject<br>
+                    <strong>recipientEmailAddress:</strong> user@contoso.com<br>
+                    <strong>deliveryAction:</strong> unknown<br>
+                    <strong>deliveryLocation:</strong> unknown<br>
+                    <strong>receivedDateTime:</strong> 2025-01-14T10:30:00Z<br>
+                    <strong>p1Sender:</strong> System.Collections.Generic.Dictionary`2[System.String,System.Object]<br>
+                    <strong>p2Sender:</strong> System.Collections.Generic.Dictionary`2[System.String,System.Object]<br>
+                </div>
+                <div class="evidence-item">
+                    <strong>Type:</strong> ipEvidence<br>
+                    <strong>Verdict:</strong> noThreatsFound<br>
+                    <strong>Remediation Status:</strong> none<br>                    <strong>ipAddress:</strong> 10.0.0.1<br>
+                </div>
+                <div class="evidence-item">
+                    <strong>Type:</strong> userEvidence<br>
+                    <strong>Verdict:</strong> suspicious<br>
+                    <strong>Remediation Status:</strong> none<br>                    <strong>userAccount:</strong> System.Collections.Generic.Dictionary`2[System.String,System.Object]<br>
+                </div>
+                <div class="evidence-item">
+                    <strong>Type:</strong> mailClusterEvidence<br>
+                    <strong>Verdict:</strong> noThreatsFound<br>
+                    <strong>Remediation Status:</strong> none<br>                    <strong>clusterBy:</strong> Subject;SenderIp;AntispamDirection;ContentType;XmiInfoTenantPolicyFinalVerdictSource<br>
+                    <strong>clusterByValue:</strong> Sample Marketing Email Subject;10.0.0.1;1;1;PhishEdu,SecOps<br>
+                    <strong>query:</strong> ((Subject:"Sample Marketing Email Subject") AND (SenderIp:"10.0.0.1") AND (AntispamDirection:"1")) AND (ContentType:"1") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)<br>
+                    <strong>urn:</strong> urn:MailClusterEntityModel:sample000000000000000000000000<br>
+                    <strong>emailCount:</strong> 1<br>
+                </div>
+                <div class="evidence-item">
+                    <strong>Type:</strong> mailClusterEvidence<br>
+                    <strong>Verdict:</strong> noThreatsFound<br>
+                    <strong>Remediation Status:</strong> none<br>                    <strong>clusterBy:</strong> Subject;P2SenderDomain;AntispamDirection;ContentType;XmiInfoTenantPolicyFinalVerdictSource<br>
+                    <strong>clusterByValue:</strong> Sample Marketing Email Subject;example-sender.com;1;1;PhishEdu,SecOps<br>
+                    <strong>query:</strong> ((Subject:"Sample Marketing Email Subject") AND (P2SenderDomain:"example-sender.com") AND (AntispamDirection:"1")) AND (ContentType:"1") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)<br>
+                    <strong>urn:</strong> urn:MailClusterEntityModel:sample000000000000000000000000<br>
+                    <strong>emailCount:</strong> 1<br>
+                </div>
+                <div class="evidence-item">
+                    <strong>Type:</strong> mailClusterEvidence<br>
+                    <strong>Verdict:</strong> noThreatsFound<br>
+                    <strong>Remediation Status:</strong> none<br>                    <strong>clusterBy:</strong> BodyFingerprintBin1;SenderIp;ContentType;XmiInfoTenantPolicyFinalVerdictSource<br>
+                    <strong>clusterByValue:</strong> 000000000;10.0.0.1;1;PhishEdu,SecOps<br>
+                    <strong>query:</strong> ((BodyFingerprintBin1:"000000000") AND (SenderIp:"10.0.0.1")) AND (ContentType:"1") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)<br>
+                    <strong>urn:</strong> urn:MailClusterEntityModel:sample000000000000000000000000<br>
+                    <strong>emailCount:</strong> 1<br>
+                </div>
+                <div class="evidence-item">
+                    <strong>Type:</strong> mailClusterEvidence<br>
+                    <strong>Verdict:</strong> noThreatsFound<br>
+                    <strong>Remediation Status:</strong> none<br>                    <strong>clusterBy:</strong> BodyFingerprintBin1;P2SenderDomain;ContentType;XmiInfoTenantPolicyFinalVerdictSource<br>
+                    <strong>clusterByValue:</strong> 000000000;example-sender.com;1;PhishEdu,SecOps<br>
+                    <strong>query:</strong> ((BodyFingerprintBin1:"000000000") AND (P2SenderDomain:"example-sender.com")) AND (ContentType:"1") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)<br>
+                    <strong>urn:</strong> urn:MailClusterEntityModel:sample000000000000000000000000<br>
+                    <strong>emailCount:</strong> 1<br>
+                </div>
+                <h3 style="margin-top: 20px; margin-bottom: 15px;">📋 Activity Timeline (3 entries)</h3>                <div class="evidence-item">
+                    <strong>Type:</strong> <span class="badge severity-informational">Status</span><br>                    <strong>Status:</strong> resolved<br>
+                    <strong>LastUpdated:</strong> 01/15/2025 14:15:00<br>
+                </div>
+                <div class="evidence-item">
+                    <strong>Type:</strong> <span class="badge severity-informational">Classification</span><br>                    <strong>Classification:</strong> falsePositive<br>
+                    <strong>Determination:</strong> notMalicious<br>
+                </div>
+                <div class="evidence-item">
+                    <strong>Type:</strong> <span class="badge severity-informational">Investigation</span><br>                    <strong>State:</strong> benign<br>
+                </div>
+                <h3 style="margin-top: 20px; margin-bottom: 10px;">Additional Properties</h3>
+                <div class="json-details">: null
+                </div></div>            <div class="section">
+                <h2 class="section-title">🤖 Security Copilot Activity</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Activity ID</div>
+                        <div class="info-value" style="font-size: 13px;">sample-alert-id-0000-0000-000000000001</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Activity Type</div>
+                        <div class="info-value">agents</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Activity Name</div>
+                        <div class="info-value">Email reported by user as malware or phish</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Source</div>
+                        <div class="info-value">Security Copilot Activity</div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">Status</div>
+                        <div class="info-value"><span class="badge severity-informational">resolved</span></div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">Classification</div>
+                        <div class="info-value">falsePositive</div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">Verdict</div>
+                        <div class="info-value"><strong>notMalicious</strong></div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">Created</div>
+                        <div class="info-value">01/15/2025 14:00:00</div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">System Tags</div>
+                        <div class="info-value"><span class='badge severity-informational' style='margin: 2px;'>Credential Phish</span></div>
+                    </div>                </div>                <h3 style="margin-top: 20px; margin-bottom: 15px;">💬 Prompts & Inputs (1)</h3>                <div class="evidence-item">
+                    <strong>Type:</strong> <span class="badge severity-informational">InitialTrigger</span><br>                    <strong>Timestamp:</strong> 01/15/2025 14:00:00<br>
+                    <strong>Content:</strong> Analyze email reported by user as potential phishing or malware<br>
+                </div>
+                <h3 style="margin-top: 20px; margin-bottom: 15px;">📊 Results & Analysis (2)</h3>                <div class="evidence-item">
+                    <strong>Type:</strong> <span class="badge severity-informational">ClassificationResult</span><br>                    <strong>Verdict:</strong> notMalicious<br>
+                    <strong>Confidence:</strong> Medium<br>
+                    <strong>Classification:</strong> falsePositive<br>
+                    <strong>Determination:</strong> notMalicious<br>
+                </div>
+                <div class="evidence-item">
+                    <strong>Type:</strong> <span class="badge severity-informational">EntityAnalysis</span><br>                    <strong>Summary:</strong> Analyzed 8 pieces of evidence<br>
+                </div>
+                <h3 style="margin-top: 20px; margin-bottom: 15px;">🔍 Entity Analysis</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Evidence Analyzed</div>
+                        <div class="info-value" style="font-size: 24px; font-weight: bold; color: #0078d4;">8</div>
+                    </div>
+                </div></div>            <div class="section">
+                <h2 class="section-title">📊 Summary</h2>
+                <div class="info-grid">                    <div class="info-item">
+                        <div class="info-label">Total Incident Alerts</div>
+                        <div class="info-value" style="font-size: 24px; font-weight: bold; color: #0078d4;">1</div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">High Severity Alerts</div>
+                        <div class="info-value" style="font-size: 24px; font-weight: bold; color: #dc3545;">0</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Medium Severity Alerts</div>
+                        <div class="info-value" style="font-size: 24px; font-weight: bold; color: #fd7e14;">0</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Low Severity Alerts</div>
+                        <div class="info-value" style="font-size: 24px; font-weight: bold; color: #ffc107;">1</div>
+                    </div>                    <div class="info-item">
+                        <div class="info-label">Evidence Items</div>
+                        <div class="info-value" style="font-size: 24px; font-weight: bold; color: #0078d4;">8</div>
+                    </div>                </div>
+            </div>            <div class="section">
+                <h2 class="section-title">⚙️ Report Generation Flow</h2>
+                <p style="margin-bottom: 15px; color: #666;">This section documents the PowerShell commands and API calls used to generate this report.</p>
+                <div class="info-grid" style="grid-template-columns: 1fr;">                    <div class="evidence-item">
+                        <strong>[17:13:26] 1. Authentication</strong><br>
+                        <strong>Command:</strong> <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace;">Connect-MgGraph -Scopes 'SecurityIncident.Read.All', 'SecurityAlert.Read.All'</code><br>
+                        <strong>Description:</strong> Authenticate to Microsoft Graph API<br>
+                        <strong>Result:</strong> Connected as user@contoso.com to tenant 00000000-0000-0000-0000-000000000000
+                    </div>                    <div class="evidence-item">
+                        <strong>[17:13:27] 1b. Auto-Discovery</strong><br>
+                        <strong>Command:</strong> <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace;">Get-MgSecurityIncident -Top 50 -Sort 'createdDateTime desc'</code><br>
+                        <strong>Description:</strong> Auto-discovered most recent phishing triage incident<br>
+                        <strong>Result:</strong> Selected incident 100001 - Email reported by user as malware or phish involving one user
+                    </div>                    <div class="evidence-item">
+                        <strong>[17:13:27] 2. Retrieve Incident</strong><br>
+                        <strong>Command:</strong> <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace;">Get-MgSecurityIncident -IncidentId '100001' -ExpandProperty 'alerts'</code><br>
+                        <strong>Description:</strong> Get incident details including all associated alerts<br>
+                        <strong>Result:</strong> Retrieved incident: Email reported by user as malware or phish involving one user | Status: resolved | Severity: low | Alerts: 1
+                    </div>                    <div class="evidence-item">
+                        <strong>[17:13:28] 3. Retrieve Alert Details</strong><br>
+                        <strong>Command:</strong> <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace;">Get-MgSecurityAlertV2 -AlertId 'sample-alert-id-0000-0000-000000000001'</code><br>
+                        <strong>Description:</strong> Get detailed alert information including evidence and classification<br>
+                        <strong>Result:</strong> Retrieved alert: Email reported by user as malware or phish | Category: InitialAccess | Evidence Items: 8
+                    </div>                    <div class="evidence-item">
+                        <strong>[17:13:28] 4. Retrieve Alert Activities</strong><br>
+                        <strong>Command:</strong> <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace;">Invoke-MgGraphRequest -Uri 'https://graph.microsoft.com/beta/security/alerts_v2/sample-alert-id-0000-0000-000000000001'</code><br>
+                        <strong>Description:</strong> Get alert activity timeline and status changes<br>
+                        <strong>Result:</strong> Retrieved 3 activity entries
+                    </div>                    <div class="evidence-item">
+                        <strong>[17:13:29] 5. Generate Report</strong><br>
+                        <strong>Command:</strong> <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace;">New-IncidentReport -Format 'HTML'</code><br>
+                        <strong>Description:</strong> Compile all collected data into HTML report<br>
+                        <strong>Result:</strong> Report generated with 1 alert(s), 8 evidence item(s), and 3 activity entries
+                    </div>                </div>
+            </div>
+            
+            <div class="section">
+                <h2 class="section-title">📄 JSON Data Export</h2>
+                <p style="margin-bottom: 15px; color: #666;">Complete report data in JSON format. Click to copy to clipboard.</p>
+                <button id="copy-btn" class="copy-button" onclick="copyJSON()">📋 Copy JSON to Clipboard</button>
+                <div class="expandable">
+                    <div class="expand-header" onclick="toggleExpand(this)">
+                        <span><strong>View JSON Data</strong></span>
+                        <span class="arrow">▼</span>
+                    </div>
+                    <div class="expand-content">
+                        <div class="expand-content-inner">
+                            <pre id="json-data" class="json-viewer">{
+  "ReportMetadata": {
+    "GeneratedAt": "2025-01-15T12:00:00.0000000Z-07:00",
+    "IncidentId": "100001",
+    "ActivityId": "sample-alert-id-0000-0000-000000000001",
+    "AlertId": "sample-alert-id-0000-0000-000000000001"
+  },
+  "Incident": {
+    "Severity": "low",
+    "RedirectIncidentId": null,
+    "Id": "100001",
+    "CreatedDateTime": "2025-01-15T14:00:00.0000000Z",
+    "TenantId": "00000000-0000-0000-0000-000000000000",
+    "Determination": "unknown",
+    "Alerts": [
+      {
+        "Title": "Email reported by user as malware or phish",
+        "LastActivityDateTime": "2026-04-15T20:22:00Z",
+        "Severity": "low",
+        "CreatedDateTime": "2025-01-15T14:00:00.0000000Z",
+        "Id": "sample-alert-id-0000-0000-000000000001",
+        "ServiceSource": "microsoftDefenderForOffice365",
+        "Category": "InitialAccess",
+        "DetectionSource": "microsoftDefenderForOffice365",
+        "Status": "resolved",
+        "FirstActivityDateTime": "2026-04-15T20:21:00Z",
+        "RecommendedActions": "",
+        "Description": "This alert is triggered when any email message is reported as malware or phish by users -V1.0.0.3"
+      }
+    ],
+    "Status": "resolved",
+    "Tags": null,
+    "Classification": "unknown",
+    "DisplayName": "Email reported by user as malware or phish involving one user",
+    "AssignedTo": null,
+    "LastUpdateDateTime": "2025-01-15T14:15:00.0000000Z"
+  },
+  "Alert": {
+    "MitreTechniques": [
+      "T1566"
+    ],
+    "ProviderAlertId": "sample-provider-0000-0000-000000000001",
+    "Tags": null,
+    "Status": "resolved",
+    "Determination": "notMalicious",
+    "Severity": "low",
+    "ServiceSource": "microsoftDefenderForOffice365",
+    "Category": "InitialAccess",
+    "IncidentWebUrl": "https://security.microsoft.com/incident2/100001/overview?tid=00000000-0000-0000-0000-000000000000",
+    "CreatedDateTime": "2025-01-15T14:00:00.0000000Z",
+    "ActorDisplayName": null,
+    "Classification": "falsePositive",
+    "Description": "This alert is triggered when any email message is reported as malware or phish by users -V1.0.0.3",
+    "SystemAlertIds": null,
+    "IncidentId": "100001",
+    "Title": "Email reported by user as malware or phish",
+    "FirstActivityDateTime": "2026-04-15T20:21:00Z",
+    "DetectionSource": "microsoftDefenderForOffice365",
+    "AssignedTo": null,
+    "LastActivityDateTime": "2026-04-15T20:22:00Z",
+    "AlertWebUrl": "https://security.microsoft.com/alerts/sample-alert-id-0000-0000-000000000001?tid=00000000-0000-0000-0000-000000000000",
+    "RecommendedActions": "",
+    "Evidence": [
+      {
+        "RemediationStatus": "none",
+        "Verdict": "noThreatsFound",
+        "Type": "#microsoft.graph.security.mailboxEvidence",
+        "Properties": {
+          "displayName": "",
+          "userAccount": {
+            "accountName": "sampleuser",
+            "userSid": "S-1-12-1-0000000000-0000000000-0000000000-0000000000",
+            "azureAdUserId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            "userPrincipalName": "",
+            "resourceAccessEvents": []
+          },
+          "upn": "",
+          "primaryAddress": "user@contoso.com"
+        }
+      },
+      {
+        "RemediationStatus": "none",
+        "Verdict": "noThreatsFound",
+        "Type": "#microsoft.graph.security.analyzedMessageEvidence",
+        "Properties": {
+          "networkMessageId": "sample-netmsg-0000-0000-000000000001",
+          "urlCount": 0,
+          "threatDetectionMethods": [],
+          "deliveryLocation": "unknown",
+          "threats": [],
+          "p2Sender": {},
+          "attachmentsCount": 0,
+          "deliveryAction": "unknown",
+          "urls": [],
+          "recipientEmailAddress": "user@contoso.com",
+          "receivedDateTime": "2025-01-14T10:30:00Z",
+          "subject": "Sample Marketing Email Subject",
+          "senderIp": "",
+          "internetMessageId": "sample-message-id@example.com",
+          "p1Sender": {
+            "emailAddress": "sender@example-sender.com"
+          }
+        }
+      },
+      {
+        "RemediationStatus": "none",
+        "Verdict": "noThreatsFound",
+        "Type": "#microsoft.graph.security.ipEvidence",
+        "Properties": {
+          "ipAddress": "10.0.0.1"
+        }
+      },
+      {
+        "RemediationStatus": "none",
+        "Verdict": "suspicious",
+        "Type": "#microsoft.graph.security.userEvidence",
+        "Properties": {
+          "userAccount": {
+            "accountName": "sampleuser",
+            "domainName": "",
+            "userSid": "S-1-12-1-0000000000-0000000000-0000000000-0000000000",
+            "azureAdUserId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            "userPrincipalName": "user@contoso.com",
+            "displayName": "Sample User (Security)",
+            "resourceAccessEvents": []
+          }
+        }
+      },
+      {
+        "RemediationStatus": "none",
+        "Verdict": "noThreatsFound",
+        "Type": "#microsoft.graph.security.mailClusterEvidence",
+        "Properties": {
+          "query": "((Subject:\"Sample Marketing Email Subject\") AND (SenderIp:\"10.0.0.1\") AND (AntispamDirection:\"1\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+          "clusterByValue": "Sample Marketing Email Subject;10.0.0.1;1;1;PhishEdu,SecOps",
+          "clusterBy": "Subject;SenderIp;AntispamDirection;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+          "networkMessageIds": [],
+          "emailCount": 1,
+          "urn": "urn:MailClusterEntityModel:sample000000000000000000000000"
+        }
+      },
+      {
+        "RemediationStatus": "none",
+        "Verdict": "noThreatsFound",
+        "Type": "#microsoft.graph.security.mailClusterEvidence",
+        "Properties": {
+          "query": "((Subject:\"Sample Marketing Email Subject\") AND (P2SenderDomain:\"example-sender.com\") AND (AntispamDirection:\"1\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+          "clusterByValue": "Sample Marketing Email Subject;example-sender.com;1;1;PhishEdu,SecOps",
+          "clusterBy": "Subject;P2SenderDomain;AntispamDirection;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+          "networkMessageIds": [],
+          "emailCount": 1,
+          "urn": "urn:MailClusterEntityModel:sample000000000000000000000000"
+        }
+      },
+      {
+        "RemediationStatus": "none",
+        "Verdict": "noThreatsFound",
+        "Type": "#microsoft.graph.security.mailClusterEvidence",
+        "Properties": {
+          "query": "((BodyFingerprintBin1:\"000000000\") AND (SenderIp:\"10.0.0.1\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+          "clusterByValue": "000000000;10.0.0.1;1;PhishEdu,SecOps",
+          "clusterBy": "BodyFingerprintBin1;SenderIp;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+          "networkMessageIds": [],
+          "emailCount": 1,
+          "urn": "urn:MailClusterEntityModel:sample000000000000000000000000"
+        }
+      },
+      {
+        "RemediationStatus": "none",
+        "Verdict": "noThreatsFound",
+        "Type": "#microsoft.graph.security.mailClusterEvidence",
+        "Properties": {
+          "query": "((BodyFingerprintBin1:\"000000000\") AND (P2SenderDomain:\"example-sender.com\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+          "clusterByValue": "000000000;example-sender.com;1;PhishEdu,SecOps",
+          "clusterBy": "BodyFingerprintBin1;P2SenderDomain;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+          "networkMessageIds": [],
+          "emailCount": 1,
+          "urn": "urn:MailClusterEntityModel:sample000000000000000000000000"
+        }
+      }
+    ],
+    "LastUpdateDateTime": "2025-01-15T14:15:00.0000000Z",
+    "Id": "sample-alert-id-0000-0000-000000000001"
+  },
+  "Activity": {
+    "ActivityId": "sample-alert-id-0000-0000-000000000001",
+    "CreatedDateTime": "2025-01-15T14:00:00.0000000Z",
+    "Classification": "falsePositive",
+    "ActivityName": "Email reported by user as malware or phish",
+    "CompletedDateTime": null,
+    "SystemTags": [
+      "Credential Phish"
+    ],
+    "EntityAnalysis": {
+      "EvidenceCount": 8,
+      "Evidence": [
+        {
+          "verdict": "noThreatsFound",
+          "@odata.type": "#microsoft.graph.security.mailboxEvidence",
+          "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+          "displayName": "",
+          "remediationStatusDetails": null,
+          "detailedRoles": [],
+          "tags": [],
+          "roles": [],
+          "upn": "",
+          "primaryAddress": "user@contoso.com",
+          "remediationStatus": "none",
+          "userAccount": {
+            "resourceAccessEvents": [],
+            "domainName": null,
+            "userPrincipalName": "",
+            "azureAdUserId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            "activeDirectoryObjectGuid": null,
+            "accountName": "sampleuser",
+            "userSid": "S-1-12-1-0000000000-0000000000-0000000000-0000000000",
+            "displayName": null
+          }
+        },
+        {
+          "networkMessageId": "sample-netmsg-0000-0000-000000000001",
+          "urn": null,
+          "attachmentsCount": 0,
+          "tags": [],
+          "verdict": "noThreatsFound",
+          "urlCount": 0,
+          "antiSpamDirection": null,
+          "threats": [],
+          "@odata.type": "#microsoft.graph.security.analyzedMessageEvidence",
+          "remediationStatusDetails": null,
+          "deliveryLocation": "unknown",
+          "roles": [],
+          "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+          "p2Sender": {
+            "displayName": null,
+            "emailAddress": null,
+            "domainName": null
+          },
+          "remediationStatus": "none",
+          "detailedRoles": [],
+          "deliveryAction": "unknown",
+          "language": null,
+          "threatDetectionMethods": [],
+          "recipientEmailAddress": "user@contoso.com",
+          "receivedDateTime": "2025-01-14T10:30:00Z",
+          "subject": "Sample Marketing Email Subject",
+          "senderIp": "",
+          "internetMessageId": "sample-message-id@example.com",
+          "urls": [],
+          "p1Sender": {
+            "displayName": null,
+            "emailAddress": "sender@example-sender.com",
+            "domainName": null
+          }
+        },
+        {
+          "verdict": "noThreatsFound",
+          "@odata.type": "#microsoft.graph.security.ipEvidence",
+          "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+          "countryLetterCode": null,
+          "remediationStatusDetails": null,
+          "ipAddress": "10.0.0.1",
+          "detailedRoles": [],
+          "tags": [],
+          "roles": [],
+          "stream": null,
+          "remediationStatus": "none",
+          "location": null
+        },
+        {
+          "verdict": "suspicious",
+          "@odata.type": "#microsoft.graph.security.userEvidence",
+          "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+          "userAccount": {
+            "resourceAccessEvents": [],
+            "domainName": "",
+            "userPrincipalName": "user@contoso.com",
+            "azureAdUserId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            "activeDirectoryObjectGuid": null,
+            "accountName": "sampleuser",
+            "userSid": "S-1-12-1-0000000000-0000000000-0000000000-0000000000",
+            "displayName": "Sample User (Security)"
+          },
+          "remediationStatusDetails": null,
+          "detailedRoles": [],
+          "tags": [],
+          "roles": [],
+          "stream": null,
+          "remediationStatus": "none"
+        },
+        {
+          "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+          "verdict": "noThreatsFound",
+          "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+          "networkMessageIds": [],
+          "clusterBy": "Subject;SenderIp;AntispamDirection;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+          "urn": "urn:MailClusterEntityModel:sample000000000000000000000000",
+          "roles": [],
+          "query": "((Subject:\"Sample Marketing Email Subject\") AND (SenderIp:\"10.0.0.1\") AND (AntispamDirection:\"1\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+          "detailedRoles": [],
+          "tags": [],
+          "emailCount": 1,
+          "remediationStatusDetails": null,
+          "remediationStatus": "none",
+          "clusterByValue": "Sample Marketing Email Subject;10.0.0.1;1;1;PhishEdu,SecOps"
+        },
+        {
+          "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+          "verdict": "noThreatsFound",
+          "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+          "networkMessageIds": [],
+          "clusterBy": "Subject;P2SenderDomain;AntispamDirection;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+          "urn": "urn:MailClusterEntityModel:sample000000000000000000000000",
+          "roles": [],
+          "query": "((Subject:\"Sample Marketing Email Subject\") AND (P2SenderDomain:\"example-sender.com\") AND (AntispamDirection:\"1\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+          "detailedRoles": [],
+          "tags": [],
+          "emailCount": 1,
+          "remediationStatusDetails": null,
+          "remediationStatus": "none",
+          "clusterByValue": "Sample Marketing Email Subject;example-sender.com;1;1;PhishEdu,SecOps"
+        },
+        {
+          "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+          "verdict": "noThreatsFound",
+          "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+          "networkMessageIds": [],
+          "clusterBy": "BodyFingerprintBin1;SenderIp;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+          "urn": "urn:MailClusterEntityModel:sample000000000000000000000000",
+          "roles": [],
+          "query": "((BodyFingerprintBin1:\"000000000\") AND (SenderIp:\"10.0.0.1\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+          "detailedRoles": [],
+          "tags": [],
+          "emailCount": 1,
+          "remediationStatusDetails": null,
+          "remediationStatus": "none",
+          "clusterByValue": "000000000;10.0.0.1;1;PhishEdu,SecOps"
+        },
+        {
+          "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+          "verdict": "noThreatsFound",
+          "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+          "networkMessageIds": [],
+          "clusterBy": "BodyFingerprintBin1;P2SenderDomain;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+          "urn": "urn:MailClusterEntityModel:sample000000000000000000000000",
+          "roles": [],
+          "query": "((BodyFingerprintBin1:\"000000000\") AND (P2SenderDomain:\"example-sender.com\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+          "detailedRoles": [],
+          "tags": [],
+          "emailCount": 1,
+          "remediationStatusDetails": null,
+          "remediationStatus": "none",
+          "clusterByValue": "000000000;example-sender.com;1;PhishEdu,SecOps"
+        }
+      ]
+    },
+    "Determination": "notMalicious",
+    "Source": "Security Copilot Activity",
+    "IncidentId": "100001",
+    "Prompts": [
+      {
+        "Content": "Analyze email reported by user as potential phishing or malware",
+        "Type": "InitialTrigger",
+        "Timestamp": "2025-01-15T14:00:00.0000000Z"
+      }
+    ],
+    "RawData": {
+      "Incident": {
+        "displayName": "Email reported by user as malware or phish involving one user",
+        "priorityScore": 16,
+        "lastModifiedBy": "System",
+        "assignedTo": null,
+        "customTags": [
+          "Agent"
+        ],
+        "status": "resolved",
+        "determination": "unknown",
+        "summary": null,
+        "severity": "low",
+        "recommendedHuntingQueries": [],
+        "resolvingComment": "",
+        "@odata.context": "https://graph.microsoft.com/beta/$metadata#security/incidents/$entity",
+        "description": null,
+        "classification": "unknown",
+        "tenantId": "00000000-0000-0000-0000-000000000000",
+        "systemTags": [
+          "Credential Phish"
+        ],
+        "incidentWebUrl": "https://security.microsoft.com/incident2/100001/overview?tid=00000000-0000-0000-0000-000000000000",
+        "redirectIncidentId": null,
+        "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+        "recommendedActions": null,
+        "comments": [],
+        "lastUpdateDateTime": "2025-01-15T14:15:00.0000000Z",
+        "id": "100001"
+      },
+      "Alert": {
+        "systemTags": [],
+        "determination": "notMalicious",
+        "resolvedDateTime": "2025-01-15T14:00:00.0000000Z",
+        "actorDisplayName": null,
+        "category": "InitialAccess",
+        "incidentId": "100001",
+        "lastUpdateDateTime": "2025-01-15T14:15:00.0000000Z",
+        "alertPolicyId": null,
+        "description": "This alert is triggered when any email message is reported as malware or phish by users -V1.0.0.3",
+        "incidentWebUrl": "https://security.microsoft.com/incident2/100001/overview?tid=00000000-0000-0000-0000-000000000000",
+        "alertWebUrl": "https://security.microsoft.com/alerts/sample-alert-id-0000-0000-000000000001?tid=00000000-0000-0000-0000-000000000000",
+        "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+        "id": "sample-alert-id-0000-0000-000000000001",
+        "evidence": [
+          {
+            "verdict": "noThreatsFound",
+            "@odata.type": "#microsoft.graph.security.mailboxEvidence",
+            "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+            "displayName": "",
+            "remediationStatusDetails": null,
+            "detailedRoles": [],
+            "tags": [],
+            "roles": [],
+            "upn": "",
+            "primaryAddress": "user@contoso.com",
+            "remediationStatus": "none",
+            "userAccount": {
+              "resourceAccessEvents": [],
+              "domainName": null,
+              "userPrincipalName": "",
+              "azureAdUserId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+              "activeDirectoryObjectGuid": null,
+              "accountName": "sampleuser",
+              "userSid": "S-1-12-1-0000000000-0000000000-0000000000-0000000000",
+              "displayName": null
+            }
+          },
+          {
+            "networkMessageId": "sample-netmsg-0000-0000-000000000001",
+            "urn": null,
+            "attachmentsCount": 0,
+            "tags": [],
+            "verdict": "noThreatsFound",
+            "urlCount": 0,
+            "antiSpamDirection": null,
+            "threats": [],
+            "@odata.type": "#microsoft.graph.security.analyzedMessageEvidence",
+            "remediationStatusDetails": null,
+            "deliveryLocation": "unknown",
+            "roles": [],
+            "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+            "p2Sender": {
+              "displayName": null,
+              "emailAddress": null,
+              "domainName": null
+            },
+            "remediationStatus": "none",
+            "detailedRoles": [],
+            "deliveryAction": "unknown",
+            "language": null,
+            "threatDetectionMethods": [],
+            "recipientEmailAddress": "user@contoso.com",
+            "receivedDateTime": "2025-01-14T10:30:00Z",
+            "subject": "Sample Marketing Email Subject",
+            "senderIp": "",
+            "internetMessageId": "sample-message-id@example.com",
+            "urls": [],
+            "p1Sender": {
+              "displayName": null,
+              "emailAddress": "sender@example-sender.com",
+              "domainName": null
+            }
+          },
+          {
+            "verdict": "noThreatsFound",
+            "@odata.type": "#microsoft.graph.security.ipEvidence",
+            "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+            "countryLetterCode": null,
+            "remediationStatusDetails": null,
+            "ipAddress": "10.0.0.1",
+            "detailedRoles": [],
+            "tags": [],
+            "roles": [],
+            "stream": null,
+            "remediationStatus": "none",
+            "location": null
+          },
+          {
+            "verdict": "suspicious",
+            "@odata.type": "#microsoft.graph.security.userEvidence",
+            "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+            "userAccount": {
+              "resourceAccessEvents": [],
+              "domainName": "",
+              "userPrincipalName": "user@contoso.com",
+              "azureAdUserId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+              "activeDirectoryObjectGuid": null,
+              "accountName": "sampleuser",
+              "userSid": "S-1-12-1-0000000000-0000000000-0000000000-0000000000",
+              "displayName": "Sample User (Security)"
+            },
+            "remediationStatusDetails": null,
+            "detailedRoles": [],
+            "tags": [],
+            "roles": [],
+            "stream": null,
+            "remediationStatus": "none"
+          },
+          {
+            "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+            "verdict": "noThreatsFound",
+            "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+            "networkMessageIds": [],
+            "clusterBy": "Subject;SenderIp;AntispamDirection;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+            "urn": "urn:MailClusterEntityModel:sample000000000000000000000000",
+            "roles": [],
+            "query": "((Subject:\"Sample Marketing Email Subject\") AND (SenderIp:\"10.0.0.1\") AND (AntispamDirection:\"1\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+            "detailedRoles": [],
+            "tags": [],
+            "emailCount": 1,
+            "remediationStatusDetails": null,
+            "remediationStatus": "none",
+            "clusterByValue": "Sample Marketing Email Subject;10.0.0.1;1;1;PhishEdu,SecOps"
+          },
+          {
+            "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+            "verdict": "noThreatsFound",
+            "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+            "networkMessageIds": [],
+            "clusterBy": "Subject;P2SenderDomain;AntispamDirection;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+            "urn": "urn:MailClusterEntityModel:sample000000000000000000000000",
+            "roles": [],
+            "query": "((Subject:\"Sample Marketing Email Subject\") AND (P2SenderDomain:\"example-sender.com\") AND (AntispamDirection:\"1\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+            "detailedRoles": [],
+            "tags": [],
+            "emailCount": 1,
+            "remediationStatusDetails": null,
+            "remediationStatus": "none",
+            "clusterByValue": "Sample Marketing Email Subject;example-sender.com;1;1;PhishEdu,SecOps"
+          },
+          {
+            "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+            "verdict": "noThreatsFound",
+            "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+            "networkMessageIds": [],
+            "clusterBy": "BodyFingerprintBin1;SenderIp;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+            "urn": "urn:MailClusterEntityModel:sample000000000000000000000000",
+            "roles": [],
+            "query": "((BodyFingerprintBin1:\"000000000\") AND (SenderIp:\"10.0.0.1\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+            "detailedRoles": [],
+            "tags": [],
+            "emailCount": 1,
+            "remediationStatusDetails": null,
+            "remediationStatus": "none",
+            "clusterByValue": "000000000;10.0.0.1;1;PhishEdu,SecOps"
+          },
+          {
+            "createdDateTime": "2025-01-15T14:00:00.0000000Z",
+            "verdict": "noThreatsFound",
+            "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+            "networkMessageIds": [],
+            "clusterBy": "BodyFingerprintBin1;P2SenderDomain;ContentType;XmiInfoTenantPolicyFinalVerdictSource",
+            "urn": "urn:MailClusterEntityModel:sample000000000000000000000000",
+            "roles": [],
+            "query": "((BodyFingerprintBin1:\"000000000\") AND (P2SenderDomain:\"example-sender.com\")) AND (ContentType:\"1\") AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps)",
+            "detailedRoles": [],
+            "tags": [],
+            "emailCount": 1,
+            "remediationStatusDetails": null,
+            "remediationStatus": "none",
+            "clusterByValue": "000000000;example-sender.com;1;PhishEdu,SecOps"
+          }
+        ],
+        "detectionSource": "microsoftDefenderForOffice365",
+        "additionalData": {},
+        "status": "resolved",
+        "severity": "low",
+        "title": "Email reported by user as malware or phish",
+        "productName": "Microsoft Defender for Office 365",
+        "investigationState": "benign",
+        "providerAlertId": "sample-provider-0000-0000-000000000001",
+        "classification": "falsePositive",
+        "detectorId": "sample-detector-0000-0000-000000000001",
+        "threatDisplayName": null,
+        "customDetails": {},
+        "lastActivityDateTime": "2026-04-15T20:22:00Z",
+        "comments": [],
+        "mitreTechniques": [
+          "T1566"
+        ],
+        "recommendedActions": "",
+        "serviceSource": "microsoftDefenderForOffice365",
+        "threatFamilyName": null,
+        "tenantId": "00000000-0000-0000-0000-000000000000",
+        "firstActivityDateTime": "2026-04-15T20:21:00Z",
+        "assignedTo": null
+      }
+    },
+    "Status": "resolved",
+    "ActivityType": "agents",
+    "RunTime": null,
+    "Recommendations": [],
+    "Results": [
+      {
+        "Type": "ClassificationResult",
+        "Verdict": "notMalicious",
+        "Confidence": "Medium",
+        "Classification": "falsePositive",
+        "Determination": "notMalicious"
+      },
+      {
+        "Type": "EntityAnalysis",
+        "EvidenceTypes": null,
+        "Summary": "Analyzed 8 pieces of evidence"
+      }
+    ],
+    "Verdict": "notMalicious"
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Microsoft Defender for Endpoint - Incident & Alert Report</strong></p>
+            <p>This report was automatically generated using Microsoft Graph Security API</p>
+            <p style="margin-top: 10px; font-size: 10px; color: #999;">
+                <strong>DISCLAIMER:</strong> This report is provided "AS IS" without warranty of any kind. 
+                Microsoft Defender for Endpoint, Microsoft Graph, and related services are trademarks of Microsoft Corporation.
+                This tool is not officially supported by Microsoft Corporation.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

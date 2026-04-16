@@ -68,30 +68,37 @@
     Author:         Security Operations
     Creation Date:  2025-12-02
     Purpose:        Automated incident reporting for Microsoft Defender for Endpoint
-
-    DISCLAIMER:
-    THE SAMPLE SCRIPTS ARE NOT SUPPORTED UNDER ANY MICROSOFT STANDARD SUPPORT
-    PROGRAM OR SERVICE. THE SAMPLE SCRIPTS ARE PROVIDED "AS IS" WITHOUT WARRANTY
-    OF ANY KIND. MICROSOFT FURTHER DISCLAIMS ALL IMPLIED WARRANTIES INCLUDING,
-    WITHOUT LIMITATION, ANY IMPLIED WARRANTIES OF MERCHANTABILITY OR OF FITNESS
-    FOR A PARTICULAR PURPOSE. THE ENTIRE RISK ARISING OUT OF THE USE OR
-    PERFORMANCE OF THE SAMPLE SCRIPTS AND DOCUMENTATION REMAINS WITH YOU. IN NO
-    EVENT SHALL MICROSOFT, ITS AUTHORS, OR ANYONE ELSE INVOLVED IN THE CREATION,
-    PRODUCTION, OR DELIVERY OF THE SCRIPTS BE LIABLE FOR ANY DAMAGES WHATSOEVER.
-
-    This script is for educational and experimental purposes only. It is not
-    officially supported by Microsoft Corporation. Always review scripts before
-    running them in your environment. Test in a non-production environment first.
-
+    
 .LINK
     https://learn.microsoft.com/en-us/graph/api/resources/security-api-overview
     https://learn.microsoft.com/en-us/graph/api/resources/security-incident
     https://learn.microsoft.com/en-us/graph/api/resources/security-alert
+
+.DISCLAIMER
+    THIS CODE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED,
+    INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR
+    A PARTICULAR PURPOSE. THE ENTIRE RISK ARISING OUT OF THE USE OR PERFORMANCE OF THIS SCRIPT
+    REMAINS WITH YOU.
+    
+    IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SCRIPT, EVEN IF
+    ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+    
+    This script is not officially supported by Microsoft Corporation. Microsoft Defender for Endpoint,
+    Microsoft Graph, Microsoft 365, Security Copilot, and related services are trademarks of
+    Microsoft Corporation. This script is provided as a community tool and should be thoroughly
+    tested in a non-production environment before use in production systems.
+    
+    By using this script, you acknowledge that you have read this disclaimer, understand it, and
+    agree to be bound by its terms.
 #>
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true, Position=0, HelpMessage="The incident ID to retrieve (e.g., 256968)")]
+    [Parameter(Mandatory=$false, Position=0, HelpMessage="The incident ID to retrieve (e.g., 256968). If omitted, the most recent phishing triage incident is auto-selected.")]
     [string]$IncidentId,
     
     [Parameter(Mandatory=$false)]
@@ -2445,6 +2452,64 @@ try {
         exit 1
     }
     
+    # If no IncidentId provided, auto-find the most recent phishing triage incident
+    if (-not $IncidentId) {
+        Write-Host "No Incident ID provided. Searching for most recent phishing triage incident..." -ForegroundColor Yellow
+        try {
+            # Query recent incidents and filter for user-reported phishing (phishing triage agent)
+            $recentIncidents = Get-MgSecurityIncident -Top 50 -Sort "createdDateTime desc" -ErrorAction Stop
+            $phishingIncident = $null
+
+            foreach ($inc in $recentIncidents) {
+                # Priority 1: Match "Email reported by user as malware or phish" (phishing triage agent incidents)
+                if ($inc.DisplayName -match 'Email reported by user as malware or phish') {
+                    $phishingIncident = $inc
+                    break
+                }
+            }
+
+            # Fallback: if no user-reported phish found, check for triage tags or broader phishing match
+            if (-not $phishingIncident) {
+                foreach ($inc in $recentIncidents) {
+                    # Check via beta endpoint for phishing triage system/custom tags
+                    try {
+                        $uri = "https://graph.microsoft.com/beta/security/incidents/$($inc.Id)"
+                        $detailed = Invoke-MgGraphRequest -Uri $uri -Method GET -ErrorAction SilentlyContinue
+                        $hasPhishTag = $false
+                        if ($detailed.systemTags) {
+                            $hasPhishTag = ($detailed.systemTags | Where-Object { $_ -like '*Phish*' -or $_ -like '*Triage*' }).Count -gt 0
+                        }
+                        if (-not $hasPhishTag -and $detailed.customTags) {
+                            $hasPhishTag = ($detailed.customTags | Where-Object { $_ -like '*Phish*' -or $_ -like '*Triage*' -or $_ -like '*Agent*' }).Count -gt 0
+                        }
+                        if ($hasPhishTag) {
+                            $phishingIncident = $inc
+                            break
+                        }
+                    } catch {
+                        # Skip if beta endpoint fails for this incident
+                    }
+                }
+            }
+
+            if ($phishingIncident) {
+                $IncidentId = $phishingIncident.Id
+                Write-Host "✓ Found phishing triage incident: $IncidentId - $($phishingIncident.DisplayName)" -ForegroundColor Green
+                Write-Host "  Created: $($phishingIncident.CreatedDateTime)" -ForegroundColor Gray
+                Write-Host "  Severity: $($phishingIncident.Severity)" -ForegroundColor Gray
+                Add-ExecutionStep -Step "1b. Auto-Discovery" -Command "Get-MgSecurityIncident -Top 50 -Sort 'createdDateTime desc'" -Description "Auto-discovered most recent phishing triage incident" -Result "Selected incident $IncidentId - $($phishingIncident.DisplayName)"
+            } else {
+                Write-Error "No recent phishing triage incidents found. Please provide an Incident ID manually."
+                Disconnect-MgGraph | Out-Null
+                exit 1
+            }
+        } catch {
+            Write-Error "Failed to search for phishing incidents: $_"
+            Disconnect-MgGraph | Out-Null
+            exit 1
+        }
+    }
+
     # Get incident details
     $incident = Get-IncidentDetails -IncidentId $IncidentId
     

@@ -252,3 +252,55 @@ The HTML report includes:
 | `No recent phishing triage incidents found` | No incidents matching "Email reported by user as malware or phish" exist in the last 50 incidents. Provide an `-IncidentId` manually |
 | `Authentication needed` | Your Graph session expired. The script will re-authenticate on next run |
 | `Security Copilot API not available` | Normal if Copilot isn't enabled. The report will still include incident/alert data |
+
+### Consuming Phishing Triage Agent output in a SIEM
+
+This script calls the Microsoft Graph Security API (`/security/incidents` and
+`/security/alerts_v2`, v1.0 + beta) to pull everything the Phishing Triage Agent
+(PTA) writes back to an incident. The agent's internal reasoning and workflow
+are intentionally not exposed, but its **decision artifacts are standard
+incident/alert fields** — which means any SIEM that already ingests Defender XDR
+data is already receiving PTA output. You just need to key your rules on the
+right fields.
+
+**What PTA emits (and what this script extracts):**
+
+- `classification` — agent verdict (e.g. `TruePositive`, `FalsePositive`)
+- `determination` — threat category (e.g. `Phishing`, `NotMalicious`)
+- `status` — auto-resolved vs. still active
+- `systemTags` / `customTags` (beta endpoint only) — agent-applied labels;
+  detect PTA involvement by matching patterns like `Phish`, `Triage`, or `Agent`
+- `assignedTo` — the agent identity when it owns the incident
+- `comments` — short rationale the agent writes back to the incident
+- `lastUpdateDateTime` — timestamp of the agent's action
+- `recommendedActions` and per-entity `evidence[].verdict` / `remediationStatus`
+
+**How a SIEM consumes the same data:**
+
+1. **Pull model** — the SIEM polls the Graph Security incidents/alerts REST API
+   (the path this script uses). Most common integration; carries all fields above.
+2. **Push model** — the Defender XDR Streaming API ships Advanced Hunting tables
+   (`AlertInfo`, `AlertEvidence`, `EmailEvents`, `UrlClickEvents`) to an Event
+   Hub or storage account; agent-driven classification and status changes
+   appear there as alert updates.
+3. **Via Microsoft Sentinel** — the Defender XDR connector forwards incidents
+   (including tags, classification, determination) and the SIEM ingests from
+   Sentinel.
+4. **Event-driven** — a webhook / Logic App on incident update can push a
+   slimmed payload (incident ID, classification, determination, systemTags,
+   comment) to a SIEM HTTP collector when you want a dedicated "PTA verdict"
+   event rather than a full incident record.
+
+**Recommended detection predicate** (mirrors `Get-IncidentDetails` in this
+script):
+
+```
+displayName contains "Email reported by user as malware or phish"
+  OR any systemTag matches /Phish|Triage/i
+  OR any customTag matches /Agent|Phish|Triage/i
+```
+
+Then surface `classification` + `determination` + the matching tag as the agent
+verdict. Key correlation/dedupe on `incidentId` + `lastUpdateDateTime`.
+
+

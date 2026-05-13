@@ -85,7 +85,9 @@ The demo is **public and shareable** at **[aka.ms/ptademo](https://aka.ms/ptadem
 [**⬇️ Download Demo Asset**](https://demos.microsoft.com/Microsoft/assetdownload/5337/demo)
 
 > [!IMPORTANT]
-> For the **complete control experience**, leverage the [downloadable local asset](https://demos.microsoft.com/Microsoft/assetdownload/5337/demo). The local copy includes the full **presenter notes** and lets you pace, pause, and navigate the demo freely — ideal for live customer presentations or deeper self-study.
+> For the **complete control experience**, leverage the [downloadable local asset](https://demos.microsoft.com/Microsoft/assetdownload/5337/demo). The local copy includes the full **presenter notes** and lets you pace, pause, and navigate the demo freely — ideal for presenting or deeper review.
+>
+> After downloading, **unzip the folder** and open **`index.html`** in your browser to launch presenter mode.
 
 > [!TIP]
 > **How to click through the demo.** At each step, look for the **blinking yellow beacon** on screen — that's the exact spot you need to click to advance. For example, in the screenshot below the *Incidents addressed by agent* card is pulsing yellow, so that's what you'd click next. Every step's screenshot in this guide shows the highlighted area to click for that step.

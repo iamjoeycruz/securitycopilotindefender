@@ -15,7 +15,6 @@ A self-paced, click-along walkthrough of the **Microsoft Security Copilot Phishi
 - [How the Agent Works](#-how-the-phishing-triage-agent-works)
 - [Prerequisites & Permissions (Production)](#-prerequisites--permissions-production)
 - [Launching the Demo](#-launching-the-demo)
-- [Demo Player Options](#-demo-player-options)
 - [Walkthrough](#-walkthrough)
   - [Step 1 — Introduction to the Agent](#step-1--introduction-to-the-phishing-triage-agent)
   - [Step 2 — Reviewing Incidents Handled by the Agent](#step-2--reviewing-incidents-handled-by-the-agent)
@@ -87,16 +86,6 @@ The demo is **public and shareable** at **[aka.ms/ptademo](https://aka.ms/ptadem
 > **How to click through the demo.** At each step, look for the **blinking yellow beacon** on screen — that's the exact spot you need to click to advance. For example, in the screenshot below the *Incidents addressed by agent* card is pulsing yellow, so that's what you'd click next. Every step's screenshot in this guide shows the highlighted area to click for that step.
 >
 > ![Example — yellow blinking beacon on the "Incidents addressed by agent" card](screenshots/step-01.webp)
-
----
-
-## 🎛️ Demo Player Options
-
-Hover your mouse in the **bottom-left corner** of the player to reveal a light-blue menu button. From there you can switch to:
-
-- **Presentation mode** — Clicking *Next* advances the demo step by step.
-- **Auto-play** — Reads the narration and clicks through automatically.
-- **Restart** — If you get lost or want to start over, click the dark-blue *Restart* button.
 
 ---
 

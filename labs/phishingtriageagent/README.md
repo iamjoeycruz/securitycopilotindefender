@@ -82,6 +82,11 @@ For the full deployment walkthrough, see [Set up the Phishing Triage Agent](http
 
 The demo is **public and shareable** at **[aka.ms/ptademo](https://aka.ms/ptademo)** — send it to customers, partners, or colleagues who want to try it on their own. Open the link and click **Start** to begin. The Zarmada player replays the Defender environment exactly as a SOC analyst would see it.
 
+[**⬇️ Download Demo Asset**](https://demos.microsoft.com/Microsoft/assetdownload/5337/demo)
+
+> [!IMPORTANT]
+> For the **complete control experience**, leverage the [downloadable local asset](https://demos.microsoft.com/Microsoft/assetdownload/5337/demo). The local copy includes the full **presenter notes** and lets you pace, pause, and navigate the demo freely — ideal for live customer presentations or deeper self-study.
+
 > [!TIP]
 > **How to click through the demo.** At each step, look for the **blinking yellow beacon** on screen — that's the exact spot you need to click to advance. For example, in the screenshot below the *Incidents addressed by agent* card is pulsing yellow, so that's what you'd click next. Every step's screenshot in this guide shows the highlighted area to click for that step.
 >

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Phishing Triage Agent - Gap Analysis Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; color: #333; padding: 30px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { background: linear-gradient(135deg, #1a3c6e, #2b579a); color: white; padding: 30px; border-radius: 10px; margin-bottom: 25px; }
+    .header h1 { font-size: 28px; font-weight: 300; margin-bottom: 5px; }
+    .header .subtitle { font-size: 14px; opacity: 0.8; }
+    .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 25px; }
+    .stat-card { background: white; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .stat-card .number { font-size: 36px; font-weight: 700; }
+    .stat-card .label { font-size: 13px; color: #666; margin-top: 5px; }
+    .stat-card.total .number { color: #2b579a; }
+    .stat-card.processed .number { color: #107c10; }
+    .stat-card.missed .number { color: #ff8c00; }
+    .stat-card.coverage .number { color: #0078d4; }
+    .section { background: white; border-radius: 8px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .section h2 { font-size: 18px; color: #1a3c6e; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #2b579a; color: white; padding: 10px 12px; text-align: left; }
+    td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+    tr:hover { background: #f8f9fa; }
+    .severity-high { color: #d83b01; font-weight: 600; }
+    .severity-medium { color: #ff8c00; font-weight: 600; }
+    .severity-low { color: #107c10; font-weight: 600; }
+    .severity-informational { color: #0078d4; font-weight: 600; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-missed { background: #fde7e7; color: #d83b01; }
+    .badge-processed { background: #e7f4e7; color: #107c10; }
+    .reason-list { margin-top: 10px; padding-left: 20px; }
+    .reason-list li { margin-bottom: 5px; font-size: 13px; }
+    .link { color: #0078d4; text-decoration: none; }
+    .link:hover { text-decoration: underline; }
+    .footer { text-align: center; font-size: 12px; color: #999; margin-top: 30px; }
+    .alert-bar { padding: 12px 18px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+    .alert-bar.warning { background: #fff4ce; border-left: 4px solid #ff8c00; }
+    .alert-bar.success { background: #e7f4e7; border-left: 4px solid #107c10; }
+    .alert-bar.danger { background: #fde7e7; border-left: 4px solid #d83b01; }
+    .chart-container { background: white; border-radius: 8px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .chart-container h2 { font-size: 18px; color: #1a3c6e; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+    .chart-wrapper { position: relative; height: 280px; }
+    .outcome-pill { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; color: white; white-space: nowrap; }
+    .outcome-summary-table td { vertical-align: top; }
+    .explainer { background: #f8fbff; border-left: 4px solid #0078d4; padding: 14px 18px; border-radius: 4px; margin: 14px 0; font-size: 13px; line-height: 1.55; }
+    .explainer strong { color: #1a3c6e; }
+    .filter-bar { margin: 10px 0 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+    .filter-bar button { background: #f0f0f0; border: 1px solid #ddd; color: #333; padding: 5px 12px; border-radius: 14px; cursor: pointer; font-size: 12px; }
+    .filter-bar button.active { background: #2b579a; color: white; border-color: #2b579a; }
+    .incident-picker-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 1000; }
+    .incident-picker { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 10px; padding: 20px 25px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 1001; min-width: 340px; max-width: 500px; max-height: 70vh; overflow-y: auto; }
+    .incident-picker h3 { font-size: 16px; color: #1a3c6e; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #f0f0f0; }
+    .incident-picker .pick-item { display: flex; align-items: center; padding: 8px 12px; margin: 4px 0; border-radius: 6px; cursor: pointer; text-decoration: none; color: #333; font-size: 13px; transition: background 0.15s; }
+    .incident-picker .pick-item:hover { background: #e8f0fe; }
+    .incident-picker .pick-item .pick-id { font-weight: 600; color: #0078d4; min-width: 60px; }
+    .incident-picker .pick-close { display: block; text-align: center; margin-top: 12px; padding: 8px; border-radius: 6px; background: #f0f0f0; color: #666; cursor: pointer; font-size: 13px; }
+    .incident-picker .pick-close:hover { background: #e0e0e0; }
+    .incident-picker .pick-all { display: block; text-align: center; margin-top: 6px; padding: 8px; border-radius: 6px; background: #2b579a; color: white; cursor: pointer; font-size: 13px; text-decoration: none; }
+    .incident-picker .pick-all:hover { background: #1a3c6e; }
+    th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 20px !important; }
+    th.sortable:hover { background: #1a3c6e; }
+    th.sortable::after { content: '\21C5'; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 11px; opacity: 0.6; }
+    th.sortable.sort-asc::after { content: '\25B2'; opacity: 1; }
+    th.sortable.sort-desc::after { content: '\25BC'; opacity: 1; }
+    .table-controls { display: flex; justify-content: flex-end; margin-bottom: 10px; gap: 10px; }
+    .table-filter { padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 250px; }
+    .table-filter:focus { outline: none; border-color: #0078d4; box-shadow: 0 0 0 2px rgba(0,120,212,0.15); }
+    .info-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #0078d4; color: white; font-size: 11px; font-weight: 700; cursor: pointer; border: none; vertical-align: middle; margin-left: 4px; line-height: 1; font-family: serif; }
+    .info-btn:hover { background: #106ebe; }
+    .info-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.35); z-index: 2000; }
+    .info-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: white; border-radius: 12px; padding: 30px 35px; box-shadow: 0 12px 48px rgba(0,0,0,0.25); z-index: 2001; max-width: 680px; width: 90%; max-height: 80vh; overflow-y: auto; }
+    .info-modal h3 { font-size: 18px; color: #1a3c6e; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+    .info-modal .info-section { margin-bottom: 18px; }
+    .info-modal .info-section h4 { font-size: 14px; color: #2b579a; margin-bottom: 6px; }
+    .info-modal .info-section p, .info-modal .info-section li { font-size: 13px; color: #444; line-height: 1.6; }
+    .info-modal .info-section ul { margin: 6px 0 0 20px; }
+    .info-modal .info-highlight { background: #e8f4e8; border-left: 4px solid #107c10; padding: 10px 14px; border-radius: 4px; font-size: 13px; margin: 10px 0; }
+    .info-modal .info-warn { background: #fff8e1; border-left: 4px solid #ff8c00; padding: 10px 14px; border-radius: 4px; font-size: 13px; margin: 10px 0; }
+    .info-modal .info-close { display: block; text-align: center; margin-top: 16px; padding: 10px; border-radius: 6px; background: #2b579a; color: white; cursor: pointer; font-size: 13px; border: none; width: 100%; }
+    .info-modal .info-close:hover { background: #1a3c6e; }
+    .info-modal .info-link { color: #0078d4; text-decoration: none; }
+    .info-modal .info-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div style="background:#0078d4;color:white;padding:10px 16px;text-align:center;font-weight:600;font-size:13px;letter-spacing:0.5px;">
+    SAMPLE OUTPUT &mdash; ANONYMIZED &mdash; All tenant IDs, email addresses, and user identifiers have been replaced with fictitious values for demonstration purposes.
+</div>
+<div class="container">
+
+<div class="header">
+    <h1>&#x1F6E1;&#xFE0F; Phishing Triage Agent &#x2014; Analysis Report</h1>
+    <div class="subtitle">Generated: 2026-05-14 12:05:58 | Period: Last 30 days | Submissions: 42 across 32 incidents</div>
+</div>
+<div style="background:#fff4ce;border:1px solid #f0c419;border-left:6px solid #d83b01;border-radius:6px;padding:12px 16px;margin:0 0 16px 0;font-size:13px;color:#333;line-height:1.55;">
+    <strong style="color:#d83b01;">&#x26A0;&#xFE0F; NOTICE &mdash; Data Accuracy Disclaimer:</strong>
+    This report is generated from a community PowerShell sample provided <strong>"AS IS"</strong> without warranty of any kind.
+    It is <strong>NOT an official Microsoft product</strong> and is <strong>NOT supported by Microsoft Support</strong>.
+    Numbers, classifications, and inferred root causes shown below <strong>may not be accurate or complete</strong> &mdash; they are
+    derived from Microsoft Graph data that may be incomplete (paging limits, throttling, API surface gaps),
+    and from heuristics that approximate the Phishing Triage Agent's behavior. Always validate findings against the
+    Microsoft Defender portal before acting on them. You are responsible for compliance with your organization's
+    data-handling, privacy, and security policies.
+</div><div class="stats-grid">
+    <div class="stat-card total"><div class="number">42 <button class="info-btn" onclick="document.getElementById('infoSubmissions').style.display='block'">i</button></div><div class="label">User-Reported Submissions</div></div>
+    <div class="stat-card processed"><div class="number">42/42 <button class="info-btn" onclick="document.getElementById('infoAddressed').style.display='block'">i</button></div><div class="label">Submissions Addressed (100%)</div></div>
+    <div class="stat-card coverage"><div class="number">23/42 <button class="info-btn" onclick="document.getElementById('infoResolved').style.display='block'">i</button></div><div class="label">Submissions Resolved (55%)</div></div>
+    <div class="stat-card missed" style="border-top: 3px solid #ff8c00;"><div class="number">0 <button class="info-btn" onclick="document.getElementById('infoNotProcessed').style.display='block'">i</button></div><div class="label">Not Processed</div></div>
+    <div class="stat-card" style="border-top: 3px solid #d83b01;"><div class="number" style="color: #d83b01;">1 <button class="info-btn" onclick="document.getElementById('infoFailed').style.display='block'">i</button></div><div class="label">PTA Failed (Errors)</div></div>
+</div>
+<div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+    <div class="stat-card" style="border-top: 3px solid #0078d4;"><div class="number" style="color: #0078d4; font-size: 28px;">03:09 <button class="info-btn" onclick="document.getElementById('infoMTTT').style.display='block'">i</button></div><div class="label">Median Time to Triage (MTTT)</div><div style="font-size: 11px; color: #999; margin-top: 4px;">Avg: 12:03:36 &middot; 32 samples</div></div>
+    <div class="stat-card" style="border-top: 3px solid #107c10;"><div class="number" style="color: #107c10; font-size: 28px;">04:24 <button class="info-btn" onclick="document.getElementById('infoMTTR').style.display='block'">i</button></div><div class="label">Median Time to Resolve (MTTR)</div><div style="font-size: 11px; color: #999; margin-top: 4px;">Avg: 19:04:19 &middot; 23 resolved</div></div>
+</div>
+
+<!-- Info Modals -->
+<div id="infoSubmissions" class="info-modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+<div class="info-modal">
+    <h3>&#x1F4CA; What the numbers mean</h3>
+    <div class="info-section">
+        <h4>Submissions: 42</h4>
+        <p>Total number of user-reported email messages (analyzedMessageEvidence) across 32 phishing incidents in the last 30 days. Matches the Defender portal's Submissions metric.</p>
+    </div>
+    <div class="info-highlight">&#x1F4D6; For official metric definitions, see <a class="info-link" href="https://learn.microsoft.com/en-us/defender-xdr/phishing-triage-agent" target="_blank">Phishing Triage Agent documentation</a>.</div>
+    <button class="info-close" onclick="this.closest('.info-modal-overlay').style.display='none'">Close</button>
+</div>
+</div>
+<div id="infoAddressed" class="info-modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+<div class="info-modal">
+    <h3>&#x1F4CA; Incidents Addressed: 42 / 42 (100%)</h3>
+    <div class="info-section">
+        <p>The Phishing Triage Agent actively attempted to analyze <strong>42</strong> of the <strong>42</strong> incidents. The remaining were not addressed, typically because the alert was auto-resolved upstream or didn't meet eligibility criteria.</p>
+    </div>
+    <div class="info-highlight">&#x2705; The agent does not override pre-resolved alerts.</div>
+    <button class="info-close" onclick="this.closest('.info-modal-overlay').style.display='none'">Close</button>
+</div>
+</div>
+<div id="infoResolved" class="info-modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+<div class="info-modal">
+    <h3>&#x1F4CA; Incidents Resolved: 23 / 42 (55%)</h3>
+    <div class="info-section">
+        <p>Out of <strong>42</strong> addressed incidents, <strong>23</strong> were autonomously resolved as False Positive (benign). True positives are intentionally left open for analyst review.</p>
+    </div>
+    <div class="info-warn">&#x26A0;&#xFE0F; Resolution percentages are not expected to be 100%. True positives are left open by design.</div>
+    <button class="info-close" onclick="this.closest('.info-modal-overlay').style.display='none'">Close</button>
+</div>
+</div>
+<div id="infoNotProcessed" class="info-modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+<div class="info-modal">
+    <h3>&#x1F4CA; Not Processed: 0</h3>
+    <div class="info-section"><p>These incidents had no detectable PTA activity. Typically auto-resolved upstream or didn't meet eligibility criteria.</p></div>
+    <button class="info-close" onclick="this.closest('.info-modal-overlay').style.display='none'">Close</button>
+</div>
+</div>
+<div id="infoFailed" class="info-modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+<div class="info-modal">
+    <h3>&#x1F4CA; PTA Failed (Errors): 1</h3>
+    <div class="info-section"><p>These incidents show PTA was triggered but didn't complete. Common causes: service errors, permission issues, SCU exhaustion, signal gaps.</p></div>
+    <div class="info-warn">&#x26A0;&#xFE0F; Review the "PTA Failed" table below for details.</div>
+    <button class="info-close" onclick="this.closest('.info-modal-overlay').style.display='none'">Close</button>
+</div>
+</div>
+<div id="infoMTTT" class="info-modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+<div class="info-modal">
+    <h3>&#x1F4CA; Median Time to Triage (MTTT): 03:09</h3>
+    <div class="info-section">
+        <h4>How it's calculated</h4>
+        <p><code>alert.resolvedDateTime - incident.createdDateTime</code> (fallback: <code>alert.lastUpdateDateTime</code>)</p>
+        <p>Samples: 32 of 42 | Min: 00:18 | Max: 168:38:54</p>
+    </div>
+    <button class="info-close" onclick="this.closest('.info-modal-overlay').style.display='none'">Close</button>
+</div>
+</div>
+<div id="infoMTTR" class="info-modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+<div class="info-modal">
+    <h3>&#x1F4CA; Median Time to Resolve (MTTR): 04:24</h3>
+    <div class="info-section">
+        <h4>How it's calculated</h4>
+        <p><code>incident.lastUpdateDateTime - incident.createdDateTime</code> (resolved incidents only)</p>
+        <p>Samples: 23 resolved | Min: 01:36 | Max: 434:34:30</p>
+    </div>
+    <button class="info-close" onclick="this.closest('.info-modal-overlay').style.display='none'">Close</button>
+</div>
+</div>
+
+<!-- Daily Activity Chart -->
+<div class="chart-container">
+    <h2>&#x1F4CA; Daily Activity</h2>
+    <div class="chart-wrapper"><canvas id="dailyChart"></canvas></div>
+</div>
+<script>
+const datasetIds = [[[],['59515','59253','59252','59251','59249'],[],[],[],[],[],[],[],['63176','63174','63070','62980','62978','62945'],[],[],[],[],['66018','66017','66016','66015','66012','66011','66010'],[],['66973'],[],[],[],[],[],['70031','69928'],['70453','70329'],[],[],[],[],[],[],['75684','75682','75463']], [[],[],[],[],[],[],[],[],['62350'],['63168'],[],[],[],['65741'],[],[],[],['67241'],[],[],[],[],['69891'],[],[],[],[],[],[],[],[]], [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]], [[],[],[],[],[],[],[],['62081'],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]];
+const datasetLabels = ['False Positive', 'True Positive', 'Not Processed', 'Errors'];
+const ctx = document.getElementById('dailyChart').getContext('2d');
+const dailyChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['04/14','04/15','04/16','04/17','04/18','04/19','04/20','04/21','04/22','04/23','04/24','04/25','04/26','04/27','04/28','04/29','04/30','05/01','05/02','05/03','05/04','05/05','05/06','05/07','05/08','05/09','05/10','05/11','05/12','05/13','05/14'],
+        datasets: [
+            { label: 'False Positive', data: [0,5,0,0,0,0,0,0,0,6,0,0,0,0,7,0,1,0,0,0,0,0,2,2,0,0,0,0,0,0,3], backgroundColor: '#2b579a', borderRadius: 3 },
+            { label: 'True Positive', data: [0,0,0,0,0,0,0,0,1,1,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0], backgroundColor: '#0078d4', borderRadius: 3 },
+            { label: 'Not Processed', data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], backgroundColor: '#ff8c00', borderRadius: 3 },
+            { label: 'Errors', data: [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], backgroundColor: '#d83b01', borderRadius: 3 }
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        onClick: (evt) => {
+            const exact = dailyChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, false);
+            if (exact.length > 0) {
+                const dsIdx = exact[0].datasetIndex, dayIdx = exact[0].index;
+                const ids = datasetIds[dsIdx][dayIdx];
+                const dateLabel = dailyChart.data.labels[dayIdx];
+                const catLabel = datasetLabels[dsIdx];
+                if (ids && ids.length === 1) window.open('https://security.microsoft.com/incidents/' + ids[0], '_blank');
+                else if (ids && ids.length > 1) showIncidentPicker(ids, dateLabel + ' \u2014 ' + catLabel);
+            }
+        },
+        plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+            tooltip: { callbacks: { afterBody: function(c) { const ids = datasetIds[c[0].datasetIndex][c[0].dataIndex]; return ids && ids.length > 0 ? 'Click to open: ' + ids.join(', ') : ''; } } }
+        },
+        scales: {
+            x: { stacked: true, grid: { display: false } },
+            y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, title: { display: true, text: 'Alerts Triaged' } }
+        }
+    }
+});
+document.getElementById('dailyChart').addEventListener('mousemove', function(evt) {
+    const points = dailyChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, false);
+    this.style.cursor = (points.length > 0 && datasetIds[points[0].datasetIndex][points[0].index]?.length > 0) ? 'pointer' : 'default';
+});
+</script>
+<div class="incident-picker-overlay" id="pickerOverlay" onclick="closeIncidentPicker()"></div>
+<div class="incident-picker" id="incidentPicker" style="display:none;"></div>
+<script>
+function showIncidentPicker(ids, dateLabel) {
+    const picker = document.getElementById('incidentPicker'), overlay = document.getElementById('pickerOverlay');
+    let html = '<h3>\uD83D\uDCC5 ' + dateLabel + ' \u2014 ' + ids.length + ' Incidents</h3>';
+    ids.forEach(id => { html += '<a class="pick-item" href="https://security.microsoft.com/incidents/' + id + '" target="_blank"><span class="pick-id">' + id + '</span><span>Open in Defender</span></a>'; });
+    html += '<div class="pick-all" onclick="openAllIncidents([' + ids.map(i => "'" + i + "'").join(',') + '])">Open All (' + ids.length + ')</div>';
+    html += '<div class="pick-close" onclick="closeIncidentPicker()">Close</div>';
+    picker.innerHTML = html; picker.style.display = 'block'; overlay.style.display = 'block';
+}
+function closeIncidentPicker() { document.getElementById('incidentPicker').style.display = 'none'; document.getElementById('pickerOverlay').style.display = 'none'; }
+function openAllIncidents(ids) { ids.forEach(id => window.open('https://security.microsoft.com/incidents/' + id, '_blank')); closeIncidentPicker(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeIncidentPicker(); });
+function makeSortable(table) {
+    const headers = table.querySelectorAll('th.sortable');
+    headers.forEach((th, colIdx) => {
+        th.addEventListener('click', () => {
+            const tbody = table.querySelector('tbody') || table;
+            const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('td'));
+            const isAsc = th.classList.contains('sort-asc');
+            headers.forEach(h => { h.classList.remove('sort-asc', 'sort-desc'); });
+            th.classList.add(isAsc ? 'sort-desc' : 'sort-asc');
+            const dir = isAsc ? -1 : 1;
+            rows.sort((a, b) => { const aT = a.children[colIdx]?.textContent.trim() || '', bT = b.children[colIdx]?.textContent.trim() || ''; const aN = parseFloat(aT), bN = parseFloat(bT); if (!isNaN(aN) && !isNaN(bN)) return (aN - bN) * dir; return aT.localeCompare(bT) * dir; });
+            rows.forEach(r => tbody.appendChild(r));
+        });
+    });
+}
+function makeFilterable(section) {
+    const table = section.querySelector('table'); if (!table) return;
+    const div = document.createElement('div'); div.className = 'table-controls';
+    const input = document.createElement('input'); input.className = 'table-filter'; input.placeholder = '\uD83D\uDD0D Filter rows...';
+    input.addEventListener('input', () => { const term = input.value.toLowerCase(); table.querySelectorAll('tr').forEach((r, i) => { if (i === 0) return; r.style.display = r.textContent.toLowerCase().includes(term) ? '' : 'none'; }); });
+    div.appendChild(input); table.parentNode.insertBefore(div, table);
+}
+document.addEventListener('DOMContentLoaded', () => { document.querySelectorAll('table').forEach(t => makeSortable(t)); document.querySelectorAll('.section').forEach(s => makeFilterable(s)); });
+</script>
+
+<!-- Dashboard Summary -->
+<div class="section">
+    <h2>&#x1F4CB; Dashboard Summary &#x2014; How to Interpret Unresolved Incidents</h2>
+    <p style="font-size: 13px; color: #555; line-height: 1.7; margin-bottom: 16px;">Not all incidents are resolved automatically &#x2014; <strong>by design</strong>. When the Phishing Triage Agent identifies an incident as a <strong>True Positive (TP)</strong> or lacks enough evidence, it leaves the incident <em>open</em> for analyst review.</p>
+    <table style="margin-bottom: 20px;">
+        <tr><th>Agent Outcome</th><th>What It Means</th><th>Incident State</th><th>Why This Is Expected</th></tr>
+        <tr><td><span class="badge badge-processed">False Positive (FP)</span></td><td>Agent is confident the submission is benign</td><td><strong>Resolved / Closed</strong></td><td>Safe to auto-close</td></tr>
+        <tr><td><span class="badge badge-missed">True Positive (TP)</span></td><td>Agent identifies a real or likely phishing threat</td><td><strong>Open</strong></td><td>Requires analyst investigation</td></tr>
+        <tr><td><span class="badge" style="background:#fff4ce;color:#8a6d00;">Insufficient Evidence</span></td><td>Evidence is missing or inconclusive</td><td><strong>Open</strong></td><td>Defers to human review</td></tr>
+        <tr><td><span class="badge" style="background:#e8e8e8;color:#555;">Pre-resolved Upstream</span></td><td>Resolved by other Defender controls before agent ran</td><td><strong>Closed</strong></td><td>Agent does not override</td></tr>
+    </table>
+</div>
+
+
+
+<!-- Failed Table -->
+<div class="section">
+    <h2>&#x274C; PTA Failed / Errored (1)</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:12px">Graph does not expose the Phishing Triage Agent's failure reason directly (the portal shows "Phishing Triage Agent failed to run" under Tasks with no further detail). The <strong>Inferred Root Cause</strong> column shows a short category derived from incident signals &mdash; hover the cell for the full diagnostic detail. Categories: <strong>Reported email unavailable for analysis</strong> (stub-only analyzedMessageEvidence &mdash; highest confidence), <strong>Preempted by other automation</strong>, <strong>Agent error (see comments)</strong>, <strong>Agent did not complete</strong>, <strong>Insufficient signal</strong>, and <strong>Investigation Required</strong> (no signals could be inferred &mdash; open the incident's Tasks panel in the Defender portal for the Copilot message).</p>
+    <table>
+        <tr><th class="sortable">Incident ID</th><th class="sortable">Title</th><th class="sortable">Severity</th><th class="sortable">Status</th><th class="sortable">Reported By</th><th class="sortable">Created</th><th>Inferred Root Cause</th><th>PTA Indicators</th><th>Link</th></tr>
+        <tr><td><a class='link' href='https://security.microsoft.com/incidents/62081' target='_blank'>62081</a></td><td>Multi-stage incident involving Initial access &amp; Exfiltration involving multiple users reported by multiple sources</td><td class='severity-high'>high</td><td>active</td><td><a class='link' href='https://security.microsoft.com/user?aad=d460f060-0000-0000-0000-d460f060d460f060&amp;accountName=u123&amp;accountDomain=contoso.com&amp;upn=u123%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1001@contoso.com'>Devon Kazemi (u123)</a></td><td>04/21/2026 15:09</td><td class='' style='font-size:12px;font-weight:600;' title='Incident was last modified by &#39;Microsoft 365 Defender-AlertCorrelation&#39; (another playbook/automation may have preempted the agent) | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u3982 | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u1487.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_0.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_3.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_3.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u21254.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admi... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u11760.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admi... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_6.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_7.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_1.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_1.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u2731.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u12483.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admi... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_0.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_9.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_5.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1487 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_3 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_2 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_1 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u12483 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_2 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_9 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_7 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u17812 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_5 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u2731 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u21254 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u11760 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_6 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1192 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_1 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u5520 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_3 | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_0.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_3.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u2839.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_2.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_7713_0.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u1325.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u1150.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_7.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_9.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_3.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u3908.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u3259.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u6660.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user securitycopilotagentuser-d8208ed1-0000-0000-0000-d8208ed1d8208ed1.
+Error message: Lifetime validat... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u3972.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u1152.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u5520.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_1.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u396.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin,... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user securitycopilotagentuser-c96eb76c-0000-0000-0000-c96eb76cc96eb76c.
+Error message: Lifetime validat... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_2.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_3 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_7713_0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1325 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_2 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_7 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u6660 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1152 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_1 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_2 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u396 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1150 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_9 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_1 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u2350 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user securitycopilotagentuser-c96eb76c-0000-0000-0000-c96eb76cc96eb76c | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u3259 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u3972 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u2731 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user securitycopilotagentuser-d8208ed1-0000-0000-0000-d8208ed1d8208ed1 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u5520 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u2839 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1037 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_3 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u3908 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user securitycopilotagentuser-730b68f0-0000-0000-0000-730b68f0730b68f0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_5 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_6 | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u3094.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_7.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_2.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_1.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_3.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_2.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u12469.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admi... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u377.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin,... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_9.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u19554.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admi... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_0.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_5.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_3.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u1037.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Alert still in &#39;new&#39; state after 32937 min (agent may not have been invoked) | Only 1 evidence item(s) — agent may have had insufficient signal'>Preempted by other automation</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; InferredFailure: Agent assigned but no verdict after 32937 min; RootCause: Preempted by other automation; FailureReason: Incident was last modified by &#39;Microsoft 365 Defender-AlertCorrelation&#39; (another playbook/automation may have preempted the agent) | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u3982 | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u1487.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_0.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_3.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_3.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u21254.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admi... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u11760.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admi... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_6.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_7.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_1.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_1.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u2731.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u12483.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admi... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_0.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_9.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_5.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1487 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_3 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_2 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_1 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u12483 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_2 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_9 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_7 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u17812 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_5 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u2731 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u21254 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u11760 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_6 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1192 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_1 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u5520 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_3 | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_0.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_3.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u2839.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_2.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_7713_0.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u1325.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u1150.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_7.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_9.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_3.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u3908.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u3259.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u6660.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user securitycopilotagentuser-d8208ed1-0000-0000-0000-d8208ed1d8208ed1.
+Error message: Lifetime validat... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u3972.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u1152.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u5520.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_1.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u396.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin,... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user securitycopilotagentuser-c96eb76c-0000-0000-0000-c96eb76cc96eb76c.
+Error message: Lifetime validat... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_2.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_3 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_7713_0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1325 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_2 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_7 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u6660 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1152 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_1 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_2 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u396 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1150 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_9 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_1 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u2350 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user securitycopilotagentuser-c96eb76c-0000-0000-0000-c96eb76cc96eb76c | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u3259 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 0426-dominance_2838_0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u3972 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u2731 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user securitycopilotagentuser-d8208ed1-0000-0000-0000-d8208ed1d8208ed1 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u5520 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u2839 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u1037 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_3 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user u3908 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user securitycopilotagentuser-730b68f0-0000-0000-0000-730b68f0730b68f0 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_5 | Comment from &#39;Playbook-AWSIAM-DeleteAccessKeys&#39;: Playbook could not delete access keys for user 1225-domaindominance_8936_6 | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u3094.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_7.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_2.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_1.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_3.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 0426-dominance_2838_2.
+Error message: Lifetime validation failed, the token is expired.
+Note: ... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u12469.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admi... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u377.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin,... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_9.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u19554.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admi... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_0.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_5.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user 1225-domaindominance_8936_3.
+Error message: Lifetime validation failed, the token is expired.
+... | Comment from &#39;Playbook-Block-EntraIDUser-Incident_DO-NOT-TOUCH&#39;: Block-AADUser playbook could not disable user u1037.
+Error message: Lifetime validation failed, the token is expired.
+Note: If user is admin... | Alert still in &#39;new&#39; state after 32937 min (agent may not have been invoked) | Only 1 evidence item(s) — agent may have had insufficient signal</td><td><a class='link' href='https://security.microsoft.com/incidents/62081' target='_blank'>Open</a></td></tr>
+
+    </table>
+</div>
+
+<!-- Processed Table -->
+<div class="section">
+    <h2>&#x2705; Incidents Successfully Processed by PTA (41)</h2>
+    <table>
+        <tr><th class="sortable">Incident ID</th><th class="sortable">Title</th><th class="sortable">Severity</th><th class="sortable">Status</th><th class="sortable">Classification</th><th class="sortable">Reported By</th><th class="sortable">Created</th><th>PTA Indicators</th><th>Confidence</th></tr>
+        <tr><td><a class='link' href='https://security.microsoft.com/incidents/75684' target='_blank'>75684</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=d460f060-0000-0000-0000-d460f060d460f060&amp;accountName=u123&amp;accountDomain=contoso.com&amp;upn=u123%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1001@contoso.com'>Devon Kazemi (u123)</a></td><td>05/14/2026 17:43</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 05/14/2026 17:44:09)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/75682' target='_blank'>75682</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>active</td><td><span class="badge" style="background:#e8e8e8;color:#555;">N/A</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=d460f060-0000-0000-0000-d460f060d460f060&amp;accountName=u123&amp;accountDomain=contoso.com&amp;upn=u123%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1001@contoso.com'>Devon Kazemi (u123)</a></td><td>05/14/2026 17:40</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/75463' target='_blank'>75463</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=4b4d8167-0000-0000-0000-4b4d81674b4d8167&amp;accountName=u492&amp;accountDomain=contoso.com&amp;upn=u492%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1002@contoso.com'>Lan Kolar (u492)</a></td><td>05/14/2026 09:36</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 05/14/2026 09:38:10)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/70453' target='_blank'>70453</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=f107e5e7-0000-0000-0000-f107e5e7f107e5e7&amp;accountName=w21653&amp;accountDomain=contoso.com&amp;upn=w21653%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1003@contoso.com'>w21653</a></td><td>05/07/2026 13:23</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 05/07/2026 13:27:21)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/70329' target='_blank'>70329</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=f7a3c46c-0000-0000-0000-f7a3c46cf7a3c46c&amp;accountName=w21646&amp;accountDomain=contoso.com&amp;upn=w21646%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1004@contoso.com'>w21646</a></td><td>05/07/2026 08:54</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 05/07/2026 08:55:43)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/70031' target='_blank'>70031</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=02e02bc3-0000-0000-0000-02e02bc302e02bc3&amp;accountName=u1348&amp;accountDomain=contoso.com&amp;upn=u1348%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1005@contoso.com'>Sai Yskakkyzy (u1348)</a></td><td>05/06/2026 20:37</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 05/06/2026 20:42:09)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/69928' target='_blank'>69928</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=5cb4acea-0000-0000-0000-5cb4acea5cb4acea&amp;accountName=u3825&amp;accountDomain=contoso.com&amp;upn=u3825%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1006@contoso.com'>Vilayphone Sybounhuang (u3825)</a></td><td>05/06/2026 18:01</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 05/06/2026 18:15:16)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/69891' target='_blank'>69891</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>active</td><td><span class="badge badge-missed">True Positive / phishing</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=5cb4acea-0000-0000-0000-5cb4acea5cb4acea&amp;accountName=u3825&amp;accountDomain=contoso.com&amp;upn=u3825%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1006@contoso.com'>Vilayphone Sybounhuang (u3825)</a></td><td>05/06/2026 16:33</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: truePositive/phishing (resolved )</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/67241' target='_blank'>67241</a></td><td>Multi-stage incident involving Initial access &amp; Lateral movement involving multiple users reported by multiple sources</td><td class='severity-high'>high</td><td>active</td><td><span class="badge badge-missed">True Positive / phishing</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=5cb4acea-0000-0000-0000-5cb4acea5cb4acea&amp;accountName=u3825&amp;accountDomain=contoso.com&amp;upn=u3825%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1006@contoso.com'>Vilayphone Sybounhuang (u3825)</a></td><td>05/01/2026 11:47</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: truePositive/phishing (resolved )</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/66973' target='_blank'>66973</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>active</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=aa58b207-0000-0000-0000-aa58b207aa58b207&amp;accountName=u4025&amp;accountDomain=contoso.com&amp;upn=u4025%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1007@contoso.com'>Zamira Bekarevich (u4025)</a></td><td>04/30/2026 16:25</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved )</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/66018' target='_blank'>66018</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=be915714-0000-0000-0000-be915714be915714&amp;accountName=w21444&amp;accountDomain=contoso.com&amp;upn=w21444%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1008@contoso.com'>w21444</a></td><td>04/28/2026 11:24</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved )</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/66017' target='_blank'>66017</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=44681588-0000-0000-0000-4468158844681588&amp;accountName=w21438&amp;accountDomain=contoso.com&amp;upn=w21438%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1009@contoso.com'>w21438</a></td><td>04/28/2026 11:24</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved )</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/66016' target='_blank'>66016</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=692739e3-0000-0000-0000-692739e3692739e3&amp;accountName=w21445&amp;accountDomain=contoso.com&amp;upn=w21445%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1010@contoso.com'>w21445</a></td><td>04/28/2026 11:24</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/28/2026 11:26:47)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/66015' target='_blank'>66015</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>active</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=ddc3e389-0000-0000-0000-ddc3e389ddc3e389&amp;accountName=w21454&amp;accountDomain=contoso.com&amp;upn=w21454%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1011@contoso.com'>w21454</a></td><td>04/28/2026 11:23</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved )</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/66012' target='_blank'>66012</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=041dcecd-0000-0000-0000-041dcecd041dcecd&amp;accountName=w21448&amp;accountDomain=contoso.com&amp;upn=w21448%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1012@contoso.com'>w21448</a></td><td>04/28/2026 11:20</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/28/2026 11:22:40)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/66011' target='_blank'>66011</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=6babf90d-0000-0000-0000-6babf90d6babf90d&amp;accountName=w21435&amp;accountDomain=contoso.com&amp;upn=w21435%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1013@contoso.com'>w21435</a></td><td>04/28/2026 11:20</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/28/2026 11:22:44)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/66010' target='_blank'>66010</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=0c50a340-0000-0000-0000-0c50a3400c50a340&amp;accountName=w21440&amp;accountDomain=contoso.com&amp;upn=w21440%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1014@contoso.com'>w21440</a></td><td>04/28/2026 11:19</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/28/2026 11:21:08)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/65741' target='_blank'>65741</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>active</td><td><span class="badge badge-missed">True Positive / phishing</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=5cb4acea-0000-0000-0000-5cb4acea5cb4acea&amp;accountName=u3825&amp;accountDomain=contoso.com&amp;upn=u3825%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1006@contoso.com'>Vilayphone Sybounhuang (u3825)</a></td><td>04/27/2026 20:10</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: truePositive/phishing (resolved )</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/63176' target='_blank'>63176</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=5cb4acea-0000-0000-0000-5cb4acea5cb4acea&amp;accountName=u3825&amp;accountDomain=contoso.com&amp;upn=u3825%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1006@contoso.com'>Vilayphone Sybounhuang (u3825)</a></td><td>04/23/2026 18:39</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/23/2026 18:40:59)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/63174' target='_blank'>63174</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=5cb4acea-0000-0000-0000-5cb4acea5cb4acea&amp;accountName=u3825&amp;accountDomain=contoso.com&amp;upn=u3825%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1006@contoso.com'>Vilayphone Sybounhuang (u3825)</a></td><td>04/23/2026 18:35</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/23/2026 18:36:31)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/63168' target='_blank'>63168</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>active</td><td><span class="badge badge-missed">True Positive / phishing</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=5cb4acea-0000-0000-0000-5cb4acea5cb4acea&amp;accountName=u3825&amp;accountDomain=contoso.com&amp;upn=u3825%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1006@contoso.com'>Vilayphone Sybounhuang (u3825)</a></td><td>04/23/2026 18:26</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: truePositive/phishing (resolved )</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/63070' target='_blank'>63070</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>active</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=3aa0295a-0000-0000-0000-3aa0295a3aa0295a&amp;accountName=u3406&amp;accountDomain=contoso.com&amp;upn=u3406%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1015@contoso.com'>Mina Mbewu (u3406)</a></td><td>04/23/2026 13:57</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved )</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/62980' target='_blank'>62980</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=3aa0295a-0000-0000-0000-3aa0295a3aa0295a&amp;accountName=u3406&amp;accountDomain=contoso.com&amp;upn=u3406%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1015@contoso.com'>Mina Mbewu (u3406)</a></td><td>04/23/2026 09:44</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/23/2026 09:48:41)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/62978' target='_blank'>62978</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=3aa0295a-0000-0000-0000-3aa0295a3aa0295a&amp;accountName=u3406&amp;accountDomain=contoso.com&amp;upn=u3406%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1015@contoso.com'>Mina Mbewu (u3406)</a></td><td>04/23/2026 09:43</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/23/2026 09:44:54)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/62945' target='_blank'>62945</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=ce982baa-0000-0000-0000-ce982baace982baa&amp;accountName=u3975&amp;accountDomain=contoso.com&amp;upn=u3975%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1016@contoso.com'>Quinn Foster (u3975)</a></td><td>04/23/2026 08:04</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/23/2026 08:07:11)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/62350' target='_blank'>62350</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-missed">True Positive / phishing</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=71eaa4c9-0000-0000-0000-71eaa4c971eaa4c9&amp;accountName=u11827&amp;accountDomain=contoso.com&amp;upn=u11827%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1017@contoso.com'>Corey Cantrell (u11827)</a></td><td>04/22/2026 06:21</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: truePositive/phishing (resolved 04/22/2026 06:24:27)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/59515' target='_blank'>59515</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=02e02bc3-0000-0000-0000-02e02bc302e02bc3&amp;accountName=u1348&amp;accountDomain=contoso.com&amp;upn=u1348%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1005@contoso.com'>Sai Yskakkyzy (u1348)</a></td><td>04/15/2026 17:36</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/15/2026 17:38:24)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/59253' target='_blank'>59253</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=795301e3-0000-0000-0000-795301e3795301e3&amp;accountName=w20528&amp;accountDomain=contoso.com&amp;upn=w20528%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1018@contoso.com'>w20528</a></td><td>04/15/2026 07:39</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/15/2026 07:41:55)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/59252' target='_blank'>59252</a></td><td>Email reported by user as malware or phish</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=f2637dae-0000-0000-0000-f2637daef2637dae&amp;accountName=w20522&amp;accountDomain=contoso.com&amp;upn=w20522%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1019@contoso.com'>w20522</a></td><td>04/15/2026 07:39</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/15/2026 07:41:53)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/59251' target='_blank'>59251</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=e14e84a6-0000-0000-0000-e14e84a6e14e84a6&amp;accountName=w20527&amp;accountDomain=contoso.com&amp;upn=w20527%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1020@contoso.com'>w20527</a></td><td>04/15/2026 07:38</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/15/2026 07:40:40)</td><td>Medium</td></tr>
+<tr><td><a class='link' href='https://security.microsoft.com/incidents/59249' target='_blank'>59249</a></td><td>Email reported by user as malware or phish involving one user</td><td class='severity-low'>low</td><td>resolved</td><td><span class="badge badge-processed">False Positive / Not Malicious</span></td><td><a class='link' href='https://security.microsoft.com/user?aad=6cc30bf0-0000-0000-0000-6cc30bf06cc30bf0&amp;accountName=w20521&amp;accountDomain=contoso.com&amp;upn=w20521%40contoso.com&amp;tab=overview&amp;tid=00000000-0000-0000-0000-000000000000' target='_blank' title='user1021@contoso.com'>w20521</a></td><td>04/15/2026 07:37</td><td style='font-size:11px;'>SystemTag: Credential Phish; CustomTag: Agent; AlertClassified: falsePositive/notMalicious (resolved 04/15/2026 07:39:58)</td><td>Medium</td></tr>
+
+    </table>
+</div>
+
+<!-- Methodology -->
+<div class="section">
+    <h2>&#x1F4D0; Methodology: Time Metrics</h2>
+    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">How Mean Time to Triage (MTTT) and Mean Time to Resolve (MTTR) are calculated for PTA-processed incidents.</p>
+    <table style="margin-bottom: 15px;">
+        <tr><th>Metric</th><th>Definition</th><th>Calculation</th><th>Median</th><th>Average</th><th>Min</th><th>Max</th><th>Samples</th></tr>
+        <tr>
+            <td><strong>MTTT</strong></td>
+            <td>Time from incident creation to PTA classification</td>
+            <td style="font-size: 12px;"><code>alert.resolvedDateTime</code> &#x2212; <code>incident.createdDateTime</code><br>(falls back to <code>alert.lastUpdateDateTime</code>)</td>
+            <td><strong>03:09</strong></td><td>12:03:36</td><td>00:18</td><td>168:38:54</td><td>32</td>
+        </tr>
+        <tr>
+            <td><strong>MTTR</strong></td>
+            <td>Time from incident creation to fully resolved</td>
+            <td style="font-size: 12px;"><code>incident.lastUpdateDateTime</code> &#x2212; <code>incident.createdDateTime</code><br>(only resolved incidents)</td>
+            <td><strong>04:24</strong></td><td>19:04:19</td><td>01:36</td><td>434:34:30</td><td>23</td>
+        </tr>
+    </table>
+    <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; font-size: 13px;">
+        <strong>&#x1F4DD; Notes:</strong>
+        <ul style="margin: 8px 0 0 20px;">
+            <li><strong>MTTT</strong> measures how quickly PTA classifies the phishing alert.</li>
+            <li><strong>MTTR</strong> measures end-to-end resolution. Only resolved incidents are included.</li>
+            <li><strong>Median is reported</strong> because multi-stage incidents can skew the average significantly.</li>
+            <li><strong>Data source:</strong> Graph API <code>v1.0/security/incidents</code> and <code>v1.0/security/alerts_v2</code>.</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Submission Outcomes: explain where each user-reported submission ended up -->
+<div class="section">
+    <h2>&#x1F4E7; Submission Outcomes &mdash; What Happened to Each Reported Email</h2>
+    <div class="explainer">
+        <strong>How to read these numbers.</strong>
+        <strong>Submissions</strong> is message-level: it counts every user-reported email, so duplicates across users inflate it.
+        <strong>Addressed</strong> means the agent took ownership of the correlated incident and set a classification.
+        <strong>Resolved</strong> is a subset of Addressed where the agent also closed the incident (typically false positives).
+        The table below breaks every submission into one bucket so you can see exactly why <strong>42 of 42</strong> were addressed and why <strong>0</strong> fell through.
+        <br><br>
+        <em>Not every submission becomes an incident, and not every incident is resolved automatically &mdash; by design. The agent does not override incidents that were auto-resolved by ZAP, attack disruption, or other upstream protections.</em>
+    </div>
+    <h3 style="font-size:14px;color:#1a3c6e;margin:18px 0 8px">Outcome summary</h3>
+    <table class="outcome-summary-table">
+        <tr><th>Outcome</th><th style="text-align:right">Count</th><th style="text-align:right">%</th><th>What it means</th></tr>
+        
+        <tr style="background:#f8f9fa;font-weight:600"><td>Totals</td><td style="text-align:right">0</td><td style="text-align:right">100%</td><td style="font-size:12px;color:#555">Addressed: 0 | Not processed / unmatched: 0</td></tr>
+    </table>
+
+    <h3 style="font-size:14px;color:#1a3c6e;margin:22px 0 8px">Per-submission detail</h3>
+    <div class="filter-bar">
+        <span style="color:#666">Filter:</span>
+        <button class="active" data-filter="all" onclick="filterOutcomes(this,'all')">All</button>
+        <button data-filter="Addressed" onclick="filterOutcomes(this,'Addressed')">Addressed</button>
+        <button data-filter="NotProcessed" onclick="filterOutcomes(this,'NotProcessed')">Not processed</button>
+        <button data-filter="NoIncident" onclick="filterOutcomes(this,'NoIncident')">No incident</button>
+        <button data-filter="ZAPed" onclick="filterOutcomes(this,'ZAPed')">ZAPed</button>
+        <button data-filter="Failed" onclick="filterOutcomes(this,'Failed')">Failed</button>
+    </div>
+    <div style="overflow-x:auto">
+    <table id="submissionOutcomeTable">
+        <tr><th>Outcome</th><th>Submitted (UTC)</th><th>Subject</th><th>Sender</th><th>Reported by</th><th>Incident</th><th>Why</th></tr>
+        
+    </table>
+    </div>
+</div>
+<script>
+function filterOutcomes(btn, category) {
+    document.querySelectorAll('.filter-bar button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const rows = document.querySelectorAll('#submissionOutcomeTable tr');
+    rows.forEach((row, idx) => {
+        if (idx === 0) return; // header
+        if (category === 'all') { row.style.display = ''; return; }
+        const pill = row.querySelector('.outcome-pill');
+        if (!pill) { row.style.display = ''; return; }
+        const label = pill.textContent || '';
+        let show = false;
+        if (category === 'Addressed')    show = label.startsWith('Addressed');
+        else if (category === 'NotProcessed') show = label.includes('not processed') || label.includes('Deleted') || label.includes('not found');
+        else if (category === 'NoIncident')   show = label.includes('No matching');
+        else if (category === 'ZAPed')        show = label.includes('ZAPed');
+        else if (category === 'Failed')       show = label.includes('Failed') || label.includes('error');
+        row.style.display = show ? '' : 'none';
+    });
+}
+</script>
+
+<!-- Common Reasons -->
+<div class="section">
+    <h2>&#x1F4CB; Common Reasons Incidents Are Not Processed by PTA</h2>
+    <ul class="reason-list">
+        <li><strong>Missing URBAC / permissions</strong> &#x2014; PTA requires Defender URBAC for its workload.</li>
+        <li><strong>Agent identity misconfiguration</strong> &#x2014; The assigned identity does not have required permissions.</li>
+        <li><strong>Conditional Access policies</strong> &#x2014; CA rules blocking the agent identity sign-in.</li>
+        <li><strong>SCU capacity exhausted</strong> &#x2014; Security Compute Unit limits reached.</li>
+        <li><strong>Service or execution errors</strong> &#x2014; Transient backend failures or request timeouts.</li>
+        <li><strong>Alert pre-classified</strong> &#x2014; Another automation classified the alert before PTA could process it.</li>
+        <li><strong>Tag changes after processing</strong> &#x2014; Agent indicators may be removed by downstream automations.</li>
+    </ul>
+</div>
+
+<div class="footer">
+    Phishing Triage Agent &#x2014; Analysis Report | Generated by Get-PTAReport.ps1 | 2026-05-14 12:05:58<br>
+    <span style="font-size: 11px;">&#x26A0;&#xFE0F; This report is provided as-is for informational purposes. For official metrics, see <a href="https://learn.microsoft.com/en-us/defender-xdr/phishing-triage-agent" target="_blank" style="color: #0078d4;">Phishing Triage Agent documentation</a>.</span>
+</div>
+
+</div>
+</body>
+</html>
+

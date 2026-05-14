@@ -9,6 +9,7 @@
 | [`Diagnose-And-Remediate-PhishingTriageAgentTags.ps1`](Diagnose-And-Remediate-PhishingTriageAgentTags.ps1) | Diagnoses & remediates Phishing Triage Agent tag stripping | Optional — use `-DiagnosticOnly` for read-only |
 | [`Deploy-KubernetesAlertSimulation.ps1`](Deploy-KubernetesAlertSimulation.ps1) | Runs Defender for Cloud K8s attack simulations | Yes — creates test pods on AKS |
 | [`Get-DefenderIncidentReport.ps1`](Get-DefenderIncidentReport.ps1) | Generates HTML reports for Defender incidents via Microsoft Graph; auto-discovers phishing triage agent incidents | No — read-only |
+| [`Get-PTAReport.ps1`](Get-PTAReport.ps1) | Bulk Phishing Triage Agent gap analysis across all user-reported phishing incidents in the last N days; produces MTTT/MTTR metrics, inferred failure root cause, and an interactive HTML dashboard | No — read-only |
 
 ---
 
@@ -302,5 +303,126 @@ displayName contains "Email reported by user as malware or phish"
 
 Then surface `classification` + `determination` + the matching tag as the agent
 verdict. Key correlation/dedupe on `incidentId` + `lastUpdateDateTime`.
+
+---
+
+## Get-PTAReport.ps1
+
+Bulk **Phishing Triage Agent (PTA) gap-analysis report** across every user-reported phishing
+incident in the last *N* days. Produces an interactive HTML dashboard plus a CSV export,
+with MTTT/MTTR timing metrics, per-incident PTA verdicts, and an **inferred root cause**
+for any incident the agent failed to process.
+
+Unlike [`Get-DefenderIncidentReport.ps1`](Get-DefenderIncidentReport.ps1) (single incident,
+deep evidence), this script is **cross-incident** — it answers “how is the agent doing
+overall?” and “which submissions slipped through?”
+
+See [`sample-pta-report.html`](sample-pta-report.html) for a fully anonymized example output.
+
+### What the report includes
+
+- **Stat tiles**: total submissions, addressed-by-PTA %, resolved (FP) %, true positives, not-processed, failed, MTTT, MTTR
+- **Daily activity chart** (Chart.js): FP / TP / Missed / Failed counts per day
+- **Submission Outcomes table**: every submission grouped by what happened to it (addressed FP/TP, failed, ZAPed, deleted, not-junk, no incident, etc.)
+- **Not Processed table**: incidents the agent never touched
+- **Failed table** with an **Inferred Root Cause** column. Categories (priority order):
+  1. `Reported email unavailable for analysis` — highest confidence; stub-only `analyzedMessageEvidence` pattern (no MIME body, no URLs/attachments, sentinel sender IP)
+  2. `Preempted by other automation` — another playbook modified the incident after PTA was assigned
+  3. `Agent error (see comments)` — a comment contains failure / permission / error language
+  4. `Agent did not complete` — alert stuck in `inProgress` or `new` beyond expected SLA
+  5. `Insufficient signal` — very sparse evidence
+  6. `Investigation Required` — no signals could be inferred; open the incident's Tasks panel in the Defender portal for the Copilot message
+- **Clickable portal links** for every incident and reporting user
+
+### How it works
+
+1. **Authenticate** via `Microsoft.Graph.Authentication` (WAM on Windows). Requests only
+   `SecurityIncident.Read.All` + `SecurityAlert.Read.All` by default; `ThreatSubmission.Read.All`
+   is added only when `-FetchSubmissions` is used (avoids an MSAL incremental-consent re-prompt).
+2. **Page through `/security/incidents`** (v1.0) filtered on title “Email reported by user…”,
+   stopping when the oldest result crosses the `-Days` window. Console shows live page progress.
+3. **Pre-fetch beta details** in batches via `/beta/$batch` for every matched incident + its
+   first alert, so the per-incident analysis loop avoids N+1 round-trips.
+4. **Classify each incident** by examining system tags, custom tags, alert classification,
+   evidence shape, and incident age. Produces a `PTAStatus` of `Processed`, `Missed`, or `Failed`
+   and (for failures) a short `RootCause` plus a longer `FailureReason` with the diagnostic evidence.
+5. **Compute metrics**: MTTT (incident-created → phishing alert resolved) and MTTR
+   (incident-created → incident resolved). Reports median, average, min, max.
+6. **Render** an HTML dashboard with Chart.js and an Excel-friendly CSV. The HTML opens in your
+   default browser automatically.
+
+### Prerequisites
+
+| Requirement | Details |
+|-------------|---------|
+| **PowerShell** | 7.0 or later (`pwsh`). Check with `$PSVersionTable.PSVersion` |
+| **Graph Modules** | `Microsoft.Graph.Authentication`, `Microsoft.Graph.Security` |
+| **Graph Permissions** | `SecurityIncident.Read.All`, `SecurityAlert.Read.All` (delegated). `ThreatSubmission.Read.All` only with `-FetchSubmissions` |
+| **Defender role** | Read-only role that grants visibility into user-reported phishing incidents (e.g., Security Reader) |
+| **Network** | Access to `graph.microsoft.com` |
+
+#### Install modules (one-time)
+
+```powershell
+Install-Module Microsoft.Graph.Authentication, Microsoft.Graph.Security -Scope CurrentUser -Force
+```
+
+### How to Run
+
+#### Option A: Default (last 30 days, full report)
+
+```powershell
+.\Get-PTAReport.ps1
+```
+
+#### Option B: Custom window
+
+```powershell
+.\Get-PTAReport.ps1 -Days 14
+```
+
+#### Option C: Failures only (fast, focused triage view)
+
+```powershell
+.\Get-PTAReport.ps1 -Days 30 -FailuresOnly
+```
+
+Only emits incidents where `PTAStatus = Failed`. The HTML title, file name, and console
+banner are tagged with `(Failures Only)`. Exits early with a friendly message if there are
+no failures in the window.
+
+#### Option D: Pin a tenant / output folder
+
+```powershell
+.\Get-PTAReport.ps1 -Days 30 -TenantId "<tenant-guid>" -OutputPath "C:\Reports"
+```
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `-Days` | No | Look-back window in days. Default: `30` |
+| `-FailuresOnly` | No | Restrict the report to incidents PTA failed to process |
+| `-TenantId` | No | Azure AD tenant GUID for multi-tenant accounts |
+| `-OutputPath` | No | Output directory. Default: `Desktop\Performance Dashboard Analysis` |
+| `-FetchSubmissions` | No | Also call `/security/threatSubmission/emailThreats` for stronger user-submission correlation |
+| `-SubmissionsCsv` | No | Path to a pre-exported submissions CSV (skips the live Graph call) |
+
+### What gets written
+
+- `PTAReport_<timestamp>.html` — interactive dashboard, opens automatically
+- `PTAReport_<timestamp>.csv` — row per incident with `PTAStatus`, `RootCause`, `FailureReason`, classification, timing
+- `PTAReport_Failures_<timestamp>.{html,csv}` — when `-FailuresOnly` is used
+
+### Notes & gotchas
+
+- The `/security/incidents` endpoint does not support server-side filtering on title, so the
+  script pages through all incidents in the window and filters client-side. Large tenants
+  with thousands of daily incidents will take several minutes.
+- Microsoft Graph throttling (HTTP 429) is handled with exponential backoff. If a single
+  incident's beta detail call is throttled repeatedly, the script may pause for up to a
+  few minutes per affected incident.
+- The `Inferred Root Cause` column is **heuristic**. Graph does not expose the agent's
+  failure reason directly; always validate against the Tasks panel in the Defender portal.
+- The HTML report includes a prominent disclaimer banner reminding viewers that numbers
+  may not be accurate or complete.
 
 

@@ -320,6 +320,7 @@ overall?” and “which submissions slipped through?”
 See [`sample-pta-report.html`](sample-pta-report.html) for a fully anonymized example output.
 
 ### What the report includes
+<img width="3718" height="1658" alt="image" src="https://github.com/user-attachments/assets/0ef0029b-221e-4165-83d8-7db9479c1ffd" />
 
 - **Stat tiles**: total submissions, addressed-by-PTA %, resolved (FP) %, true positives, not-processed, failed, MTTT, MTTR
 - **Daily activity chart** (Chart.js): FP / TP / Missed / Failed counts per day
